@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AETHER_OS - Agent Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Sora:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary-fixed-variant": "#5700c9",
+                        "tertiary-fixed-dim": "#d1bcff",
+                        "surface-dim": "#10141a",
+                        "tertiary-fixed": "#e9ddff",
+                        "background": "#10141a",
+                        "outline-variant": "#3b494c",
+                        "on-error": "#690005",
+                        "primary-container": "#00e5ff",
+                        "surface-container": "#1c2026",
+                        "on-secondary-fixed": "#001e30",
+                        "on-primary": "#00363d",
+                        "secondary-container": "#00affe",
+                        "on-surface-variant": "#bac9cc",
+                        "on-secondary": "#00344f",
+                        "inverse-surface": "#dfe2eb",
+                        "on-background": "#dfe2eb",
+                        "on-primary-fixed": "#001f24",
+                        "surface-container-high": "#262a31",
+                        "on-primary-fixed-variant": "#004f58",
+                        "primary-fixed": "#9cf0ff",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "primary": "#c3f5ff",
+                        "surface": "#10141a",
+                        "on-secondary-fixed-variant": "#004b70",
+                        "surface-container-low": "#181c22",
+                        "on-primary-container": "#00626e",
+                        "on-secondary-container": "#003f5f",
+                        "surface-container-highest": "#31353c",
+                        "on-tertiary": "#3c0090",
+                        "on-surface": "#dfe2eb",
+                        "surface-variant": "#31353c",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#00daf3",
+                        "on-tertiary-fixed": "#23005b",
+                        "tertiary": "#f2e9ff",
+                        "secondary-fixed-dim": "#8dcdff",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface-container-lowest": "#0a0e14",
+                        "outline": "#849396",
+                        "surface-bright": "#353940",
+                        "secondary": "#8dcdff",
+                        "secondary-fixed": "#cae6ff",
+                        "inverse-on-surface": "#2d3137",
+                        "on-tertiary-container": "#6c00f7",
+                        "tertiary-container": "#d9c8ff",
+                        "inverse-primary": "#006875"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "panel-padding": "12px",
+                        "gutter": "16px",
+                        "margin-desktop": "40px",
+                        "margin-mobile": "20px",
+                        "unit": "4px"
+                    },
+                    fontFamily: {
+                        "headline-sm": ["Sora"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-display": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Sora"],
+                        "headline-lg": ["Sora"],
+                        "body-md": ["JetBrains Mono"],
+                        "body-lg": ["JetBrains Mono"],
+                        "headline-md": ["Sora"]
+                    },
+                    fontSize: {
+                        "headline-sm": ["18px", { lineHeight: "24px", fontWeight: "600" }],
+                        "label-caps": ["10px", { lineHeight: "12px", letterSpacing: "0.1em", fontWeight: "700" }],
+                        "data-display": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "headline-lg-mobile": ["26px", { lineHeight: "32px", fontWeight: "700" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "0.01em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism & Brutalism Utilities */
+        .glass-panel {
+            background: rgba(28, 32, 38, 0.08); /* surface-container */
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(59, 73, 76, 0.2); /* outline-variant */
+        }
+
+        .tech-border {
+            border: 1px solid theme('colors.outline-variant');
+        }
+
+        .corner-brackets {
+            position: relative;
+        }
+        .corner-brackets::before,
+        .corner-brackets::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: theme('colors.primary-container');
+            border-style: solid;
+        }
+        .corner-brackets::before {
+            top: -1px;
+            left: -1px;
+            border-width: 1px 0 0 1px;
+        }
+        .corner-brackets::after {
+            bottom: -1px;
+            right: -1px;
+            border-width: 0 1px 1px 0;
+        }
+
+        /* Scanning Effects */
+        .scan-line {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: rgba(0, 229, 255, 0.05);
+            animation: scan 10s linear infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .scan-bar-horizontal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, theme('colors.primary-container'), transparent);
+            animation: scan-horizontal 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            opacity: 0.5;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100vh); }
+            100% { transform: translateY(100vh); }
+        }
+
+        @keyframes scan-horizontal {
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(400px); opacity: 0; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: theme('colors.surface-container-lowest');
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.outline-variant');
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.primary-container');
+        }
+
+        /* Forms & Inputs */
+        .tech-toggle:checked {
+            background-color: theme('colors.primary-container');
+            border-color: theme('colors.primary-container');
+        }
+        .tech-toggle:checked ~ .dot {
+            transform: translateX(100%);
+            background-color: theme('colors.on-primary-container');
+        }
+
+        .tech-range::-webkit-slider-thumb {
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: theme('colors.primary-container');
+            cursor: crosshair;
+            border-radius: 0;
+        }
+        .tech-range::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: theme('colors.primary-container');
+            cursor: crosshair;
+            border-radius: 0;
+            border: none;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col md:flex-row">
+<!-- Scanning Line Effect -->
+<div class="scan-line"></div>
+<!-- Background Grid (Z-1) -->
+<div class="fixed inset-0 pointer-events-none z-0" style="background-image: linear-gradient(theme('colors.outline-variant') 1px, transparent 1px), linear-gradient(90deg, theme('colors.outline-variant') 1px, transparent 1px); background-size: 40px 40px; opacity: 0.05;"></div>
+<!-- SideNavBar (Desktop Only) -->
+<nav class="hidden md:flex flex-col bg-surface-container-lowest/90 dark:bg-surface-container-lowest/90 backdrop-blur-3xl h-screen w-64 left-0 border-r border-outline-variant/30 fixed left-0 top-0 h-full z-40 pt-20 transition-all duration-300">
+<div class="px-6 mb-10">
+<h1 class="font-headline-sm text-headline-sm text-primary mb-1">AETHER_OS_v4.2</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">OPERATOR_01 / LINK_STABLE_98%</p>
+</div>
+<ul class="flex flex-col flex-grow">
+<!-- Inactive -->
+<li class="group">
+<a class="flex items-center gap-4 text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all duration-300 font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">hub</span>
+<span>CORE</span>
+</a>
+</li>
+<li class="group">
+<a class="flex items-center gap-4 text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all duration-300 font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">psychology</span>
+<span>NEURAL</span>
+</a>
+</li>
+<li class="group">
+<a class="flex items-center gap-4 text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all duration-300 font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">lan</span>
+<span>NETWORK</span>
+</a>
+</li>
+<li class="group">
+<a class="flex items-center gap-4 text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all duration-300 font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">verified_user</span>
+<span>SECURITY</span>
+</a>
+</li>
+<!-- Active (Settings) -->
+<li class="group">
+<a class="flex items-center gap-4 text-primary border-l-2 border-primary bg-primary/5 py-4 pl-6 animate-pulse transition-opacity font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span>SYSTEM</span>
+</a>
+</li>
+</ul>
+<div class="p-6 mt-auto">
+<div class="h-16 w-16 mx-auto rounded-full border border-primary-container p-1 relative">
+<img class="w-full h-full rounded-full object-cover filter grayscale sepia-[.2] hue-rotate-[180deg]" data-alt="A highly detailed, starkly lit biological signature avatar displaying a futuristic, glitching wireframe of a human profile. The aesthetic is dark mode, featuring a deep navy background with glowing cyan and neon red data points overlaying the face. The mood is analytical and advanced, fitting a high-tech tactical UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaRdWKRw6ecEEacYoAL8Gwhbgx65x3Df1ViJT0cudLwPa6FAkYCOJov4YUTdvFpebzXUenAS3JV9fSU3zHZH4LAshxC1hm7gWtLKSKLyuPjrkZlOe9B-TcMj_or_gpP-xO_r50evPgZ8dhdaujuAEwh7TKsn9zetRZV0-2yUifR5a4H_q5LrWFghlthbuhHcbqM_WnAEb8ldPEiXTduKgc_V5MyuLyRkOJGfqWVu38dmE2O5lilvrVGQ"/>
+<div class="absolute inset-0 border border-primary-container rounded-full animate-ping opacity-20"></div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 relative z-10 p-gutter md:p-margin-desktop">
+<!-- Header -->
+<header class="mb-8 border-b border-outline-variant/30 pb-4 flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2 tracking-tight">NEURAL LINK PARAMETERS</h2>
+<p class="font-data-display text-data-display text-on-surface-variant uppercase tracking-widest">[ SYSTEM CONFIGURATION // AGENT SETTINGS ]</p>
+</div>
+<div class="hidden md:flex gap-2">
+<span class="px-2 py-1 border border-primary/30 text-primary font-label-caps text-label-caps">SYS_READY</span>
+<span class="px-2 py-1 border border-outline-variant text-on-surface-variant font-label-caps text-label-caps">UPLINK_ON</span>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Security Protocols (Col 1-4) -->
+<section class="md:col-span-4 glass-panel corner-brackets p-panel-padding flex flex-col relative overflow-hidden group">
+<div class="scan-bar-horizontal"></div>
+<div class="flex items-center gap-2 mb-6 border-b border-outline-variant/30 pb-2">
+<span class="material-symbols-outlined text-primary-container">shield_locked</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">SECURITY PROTOCOLS</h3>
+</div>
+<div class="space-y-6 flex-grow">
+<!-- Toggle 1 -->
+<div class="flex items-center justify-between">
+<div>
+<p class="font-data-display text-data-display text-on-surface mb-1">[ FIREWALL_DEFENSE ]</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Active packet filtering</p>
+</div>
+<label class="flex items-center cursor-pointer relative">
+<input checked="" class="sr-only tech-toggle" type="checkbox"/>
+<div class="w-10 h-4 bg-surface-container-high border border-outline-variant rounded-none transition-colors"></div>
+<div class="dot absolute left-0 top-0 bg-outline-variant w-5 h-4 transition-transform"></div>
+</label>
+</div>
+<!-- Toggle 2 -->
+<div class="flex items-center justify-between">
+<div>
+<p class="font-data-display text-data-display text-on-surface mb-1">[ BIOMETRIC_SYNC ]</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Continuous DNA verification</p>
+</div>
+<label class="flex items-center cursor-pointer relative">
+<input checked="" class="sr-only tech-toggle" type="checkbox"/>
+<div class="w-10 h-4 bg-surface-container-high border border-outline-variant rounded-none transition-colors"></div>
+<div class="dot absolute left-0 top-0 bg-outline-variant w-5 h-4 transition-transform"></div>
+</label>
+</div>
+<!-- Toggle 3 -->
+<div class="flex items-center justify-between">
+<div>
+<p class="font-data-display text-data-display text-on-surface mb-1">[ COGNITIVE_ISOLATION ]</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Prevents external mem-write</p>
+</div>
+<label class="flex items-center cursor-pointer relative">
+<input class="sr-only tech-toggle" type="checkbox"/>
+<div class="w-10 h-4 bg-surface-container-high border border-outline-variant rounded-none transition-colors"></div>
+<div class="dot absolute left-0 top-0 bg-outline-variant w-5 h-4 transition-transform"></div>
+</label>
+</div>
+</div>
+<button class="mt-6 w-full py-2 border border-primary-container text-primary-container font-label-caps text-label-caps hover:bg-primary-container/10 transition-colors uppercase tracking-widest">
+                    INITIALIZE OVERRIDE
+                </button>
+</section>
+<!-- AI Parameters (Col 5-12) -->
+<section class="md:col-span-8 glass-panel corner-brackets p-panel-padding flex flex-col relative">
+<div class="flex items-center justify-between mb-6 border-b border-outline-variant/30 pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-container">tune</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">AI PARAMETERS</h3>
+</div>
+<span class="font-label-caps text-label-caps text-primary-container animate-pulse">CALIBRATING...</span>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-grow">
+<!-- Sliders Column -->
+<div class="space-y-8">
+<!-- Slider 1 -->
+<div>
+<div class="flex justify-between mb-2">
+<label class="font-data-display text-data-display text-on-surface">[ INTELLIGENCE_QUOTIENT ]</label>
+<span class="font-label-caps text-label-caps text-primary-container">LEVEL_9</span>
+</div>
+<input class="w-full h-1 bg-surface-container-high outline-none appearance-none tech-range" max="10" min="1" type="range" value="9"/>
+<div class="flex justify-between mt-1 px-1">
+<span class="text-[8px] text-outline-variant font-label-caps">MIN</span>
+<span class="text-[8px] text-outline-variant font-label-caps">MAX</span>
+</div>
+</div>
+<!-- Slider 2 -->
+<div>
+<div class="flex justify-between mb-2">
+<label class="font-data-display text-data-display text-on-surface">[ VOICE_FREQUENCY_HZ ]</label>
+<span class="font-label-caps text-label-caps text-secondary-container">432_HZ</span>
+</div>
+<input class="w-full h-1 bg-surface-container-high outline-none appearance-none tech-range" max="1000" min="100" style="--tw-range-thumb-bg: theme('colors.secondary-container');" type="range" value="432"/>
+<div class="flex justify-between mt-1 px-1">
+<span class="text-[8px] text-outline-variant font-label-caps">LOW</span>
+<span class="text-[8px] text-outline-variant font-label-caps">HIGH</span>
+</div>
+</div>
+<!-- Slider 3 -->
+<div>
+<div class="flex justify-between mb-2">
+<label class="font-data-display text-data-display text-on-surface">[ COGNITIVE_LATENCY ]</label>
+<span class="font-label-caps text-label-caps text-error">1.2_MS</span>
+</div>
+<input class="w-full h-1 bg-surface-container-high outline-none appearance-none tech-range" max="10" min="0.1" step="0.1" type="range" value="1.2"/>
+<div class="flex justify-between mt-1 px-1">
+<span class="text-[8px] text-outline-variant font-label-caps">FAST</span>
+<span class="text-[8px] text-outline-variant font-label-caps">SLOW</span>
+</div>
+</div>
+</div>
+<!-- Visualizer / Status Column -->
+<div class="border border-outline-variant/30 bg-surface-container-low/50 p-4 flex flex-col justify-between">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-4 border-b border-outline-variant/30 pb-1">NEURAL_MAP_PREVIEW</p>
+<!-- Abstract visualizer representation -->
+<div class="h-32 w-full relative flex items-center justify-center opacity-80">
+<div class="absolute inset-0 border border-primary/20 rounded-full animate-ping" style="animation-duration: 3s;"></div>
+<div class="absolute w-24 h-24 border border-secondary/40 rounded-full animate-spin" style="animation-duration: 10s;"></div>
+<div class="absolute w-16 h-16 border-2 border-primary-container border-dashed rounded-full animate-spin" style="animation-direction: reverse; animation-duration: 5s;"></div>
+<span class="material-symbols-outlined text-primary-container text-4xl">memory</span>
+</div>
+</div>
+<div class="mt-4">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">SYNC_STABILITY</p>
+<div class="h-2 w-full bg-surface-container-high border border-outline-variant/50 relative">
+<div class="absolute top-0 left-0 h-full bg-primary-container" style="width: 92%;"></div>
+<!-- Segment markers -->
+<div class="absolute inset-0 flex justify-between">
+<div class="w-px h-full bg-background"></div>
+<div class="w-px h-full bg-background"></div>
+<div class="w-px h-full bg-background"></div>
+<div class="w-px h-full bg-background"></div>
+</div>
+</div>
+<div class="flex justify-between mt-1">
+<span class="font-label-caps text-label-caps text-primary-container">92%</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">OPTIMAL</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</body></html>

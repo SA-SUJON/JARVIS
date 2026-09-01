@@ -1,0 +1,10 @@
+[
+    {
+        "role": "user",
+        "content": "Hello.\n\nKnown operator profile: SA SUJON. Age: 0; Work: Student, Developer, Tech Researcher. Use this only when relevant and do not reveal private profile data unnecessarily."
+    },
+    {
+        "role": "assistant",
+        "content": "Hello, how can I help you today?"
+    }
+]

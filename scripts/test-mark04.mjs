@@ -1,0 +1,12 @@
+import { getCoreDiagnostics, getNetworkStatus, currentLocation, getSystemLogs, getAdbStatus } from '../dist-electron/system.js';
+const diagnostics = await getCoreDiagnostics();
+if (!diagnostics.cpu || !diagnostics.memory || !diagnostics.battery) throw new Error('Core diagnostics did not return required sections');
+const network = await getNetworkStatus();
+if (!Array.isArray(network.interfaces)) throw new Error('Network interfaces missing');
+const location = await currentLocation();
+if (!location || !('latitude' in location) || !('longitude' in location)) throw new Error('Location response malformed');
+const logs = await getSystemLogs();
+if (!Array.isArray(logs.lines)) throw new Error('Runtime logs missing');
+const adb = await getAdbStatus();
+if (!Array.isArray(adb.devices)) throw new Error('ADB status malformed');
+console.log(JSON.stringify({ ok: true, cpu: diagnostics.cpu, memory: diagnostics.memory, interfaces: network.interfaces.length, locationSource: location.source, logs: logs.lines.length, adbInstalled: adb.installed }, null, 2));

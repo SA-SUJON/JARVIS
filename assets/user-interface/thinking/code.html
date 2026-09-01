@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MARK_04 // J.A.R.V.I.S. - Processing</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Sora:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed": "#cae6ff",
+                      "surface-container-highest": "#31353c",
+                      "on-tertiary-fixed": "#23005b",
+                      "primary": "#c3f5ff",
+                      "secondary-container": "#00affe",
+                      "secondary-fixed-dim": "#8dcdff",
+                      "on-background": "#dfe2eb",
+                      "primary-fixed-dim": "#00daf3",
+                      "inverse-on-surface": "#2d3137",
+                      "surface-container-lowest": "#0a0e14",
+                      "on-primary-fixed": "#001f24",
+                      "outline-variant": "#3b494c",
+                      "on-tertiary-fixed-variant": "#5700c9",
+                      "on-tertiary-container": "#6c00f7",
+                      "surface": "#10141a",
+                      "on-primary-fixed-variant": "#004f58",
+                      "primary-container": "#00e5ff",
+                      "background": "#10141a",
+                      "surface-container": "#1c2026",
+                      "surface-container-high": "#262a31",
+                      "surface-container-low": "#181c22",
+                      "on-surface-variant": "#bac9cc",
+                      "on-tertiary": "#3c0090",
+                      "on-secondary-fixed-variant": "#004b70",
+                      "outline": "#849396",
+                      "secondary": "#8dcdff",
+                      "error": "#ffb4ab",
+                      "inverse-primary": "#006875",
+                      "tertiary-fixed": "#e9ddff",
+                      "on-primary-container": "#00626e",
+                      "surface-bright": "#353940",
+                      "inverse-surface": "#dfe2eb",
+                      "on-error": "#690005",
+                      "primary-fixed": "#9cf0ff",
+                      "on-secondary-container": "#003f5f",
+                      "on-primary": "#00363d",
+                      "on-secondary-fixed": "#001e30",
+                      "on-error-container": "#ffdad6",
+                      "tertiary": "#f2e9ff",
+                      "on-secondary": "#00344f",
+                      "surface-variant": "#31353c",
+                      "surface-dim": "#10141a",
+                      "on-surface": "#dfe2eb",
+                      "tertiary-fixed-dim": "#d1bcff",
+                      "surface-tint": "#00daf3",
+                      "tertiary-container": "#d9c8ff",
+                      "error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "40px",
+                      "unit": "4px",
+                      "panel-padding": "12px",
+                      "gutter": "16px",
+                      "margin-mobile": "20px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Sora"
+                      ],
+                      "data-display": [
+                              "JetBrains Mono"
+                      ],
+                      "label-caps": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-lg": [
+                              "Sora"
+                      ],
+                      "headline-lg-mobile": [
+                              "Sora"
+                      ],
+                      "body-lg": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-sm": [
+                              "Sora"
+                      ],
+                      "body-md": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-display": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-caps": [
+                              "10px",
+                              {
+                                      "lineHeight": "12px",
+                                      "letterSpacing": "0.1em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "26px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .scan-line {
+            background: linear-gradient(to bottom, transparent, rgba(0, 218, 243, 0.1), transparent);
+            animation: scan 4s linear infinite;
+        }
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        .glow-border {
+            box-shadow: 0 0 10px rgba(0, 218, 243, 0.2), inset 0 0 10px rgba(0, 218, 243, 0.1);
+        }
+        .blinking-cursor::after {
+            content: '_';
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-body-md select-none">
+<!-- Decorative Grid / Z-1 HUD Layer -->
+<div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: linear-gradient(to right, rgba(132, 147, 150, 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(132, 147, 150, 0.1) 1px, transparent 1px); background-size: 40px 40px;"></div>
+<!-- Scanning Line -->
+<div class="absolute inset-0 w-full h-[100px] pointer-events-none scan-line z-10"></div>
+<!-- Main Container -->
+<main class="relative z-20 flex flex-col items-center justify-center w-full max-w-md px-margin-mobile md:px-margin-desktop h-full">
+<!-- WebGL Animation Container -->
+<div class="relative w-64 h-64 mb-12 flex items-center justify-center">
+<!-- Corner Brackets for HUD effect -->
+<div class="absolute top-0 left-0 w-4 h-4 border-t border-l border-primary opacity-50"></div>
+<div class="absolute top-0 right-0 w-4 h-4 border-t border-r border-primary opacity-50"></div>
+<div class="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-primary opacity-50"></div>
+<div class="absolute bottom-0 right-0 w-4 h-4 border-b border-r border-primary opacity-50"></div>
+<!-- STITCH_SHADER_START:ANIMATION_17 class="w-full h-full" -->
+<div class="w-full h-full" style="display:block;">
+<canvas id="shader-canvas-ANIMATION_17" style="display:block;width:100%;height:100%"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas-ANIMATION_17');
+
+  // Sync the WebGL drawing-buffer size with the CSS-driven layout size.
+  // This fires on initial layout and whenever the element is resized.
+  function syncSize() {
+    const w = canvas.clientWidth  || 1280;
+    const h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncSize).observe(canvas);
+  }
+  syncSize();
+
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+  const fs = `precision highp float;
+
+varying vec2 v_texCoord;
+uniform float u_time;
+uniform vec2 u_resolution;
+
+// Kinetic Oversight Design System Colors (derived from theme)
+const vec3 primary = vec3(0.0, 0.898, 1.0); // #00e5ff
+const vec3 background = vec3(0.063, 0.078, 0.102); // #10141a
+
+float ring(vec2 uv, float outer, float inner, float blur) {
+    float d = length(uv);
+    return smoothstep(inner - blur, inner, d) - smoothstep(outer, outer + blur, d);
+}
+
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), f.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+void main() {
+    vec2 uv = (v_texCoord - 0.5) * 2.0;
+    uv.x *= u_resolution.x / u_resolution.y;
+    
+    vec3 finalColor = vec3(0.0);
+    float t = u_time * 0.8;
+    
+    // Core pulsing glow
+    float pulse = (sin(t * 1.5) * 0.5 + 0.5) * 0.2 + 0.8;
+    float core = smoothstep(0.4, 0.0, length(uv));
+    finalColor += primary * core * pulse * 0.4;
+    
+    // Rotating segments
+    float angle = atan(uv.y, uv.x);
+    float dist = length(uv);
+    
+    // Inner active ring
+    float r1 = ring(uv, 0.45, 0.42, 0.01);
+    float seg1 = step(0.6, sin(angle * 8.0 + t * 2.0));
+    finalColor += primary * r1 * seg1 * 2.0;
+    
+    // Middle data ring
+    float r2 = ring(uv, 0.55, 0.53, 0.01);
+    float seg2 = step(0.3, noise(vec2(angle * 5.0 - t * 1.2, t * 0.1)));
+    finalColor += primary * r2 * seg2 * 1.5;
+    
+    // Outer faint orbit
+    float r3 = ring(uv, 0.7, 0.69, 0.02);
+    float seg3 = step(0.8, sin(angle * 12.0 - t * 3.0));
+    finalColor += primary * r3 * seg3 * 0.8;
+    
+    // Digital "glitch" interference
+    float glitch = step(0.98, noise(vec2(uv.y * 100.0, t * 10.0)));
+    finalColor += primary * glitch * ring(uv, 0.9, 0.1, 0.05) * 0.3;
+    
+    // Atmospheric noise
+    float n = noise(uv * 3.0 + t * 0.5);
+    finalColor += primary * n * 0.05;
+
+    gl_FragColor = vec4(finalColor, 1.0);
+}`;
+  function cs(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  // u_mouse is in pixel coordinates matching u_resolution (ShaderToy convention).
+  // Shaders that need normalized coords should use: u_mouse / u_resolution.
+  let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+  window.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      const nx = (event.clientX - rect.left) / rect.width;
+      const ny = 1.0 - (event.clientY - rect.top) / rect.height;
+      mouse.x = nx * canvas.width;
+      mouse.y = ny * canvas.height;
+    }
+  });
+
+  function render(t) {
+    if (typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+</div>
+<!-- STITCH_SHADER_END:ANIMATION_17 -->
+</div>
+<!-- Text Readouts -->
+<div class="flex flex-col items-center space-y-4 mb-16 text-center">
+<h1 class="font-data-display text-data-display text-primary tracking-[0.2em] uppercase blinking-cursor">
+                SYSTEM_CALIBRATING
+            </h1>
+<p class="font-label-caps text-label-caps text-outline-variant tracking-widest animate-pulse">
+                NEURAL_SYNC_IN_PROGRESS
+            </p>
+<div class="flex items-center space-x-2 mt-4 opacity-50">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">memory</span>
+<span class="font-data-display text-[10px] text-primary-fixed-dim">LOAD_MATRIX_0X8F</span>
+</div>
+</div>
+<!-- Cancel Button -->
+<button class="relative group overflow-hidden px-8 py-3 border border-error/50 bg-surface-container-low/50 backdrop-blur-md hover:bg-error/10 hover:border-error transition-all duration-300">
+<div class="absolute inset-0 bg-gradient-to-r from-error/0 via-error/10 to-error/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+<span class="relative z-10 font-label-caps text-label-caps text-error tracking-[0.2em] flex items-center space-x-2">
+<span class="material-symbols-outlined text-[14px]">cancel</span>
+<span>CANCEL_TASK</span>
+</span>
+</button>
+</main>
+<!-- Top Left Identity -->
+<div class="absolute top-margin-mobile left-margin-mobile md:top-margin-desktop md:left-margin-desktop z-20 flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary text-[18px]">hub</span>
+<span class="font-label-caps text-label-caps text-primary tracking-widest opacity-75">MARK_04 // OP_ACTIVE</span>
+</div>
+</body></html>

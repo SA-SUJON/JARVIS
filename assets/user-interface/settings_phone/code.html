@@ -1,0 +1,426 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>J.A.R.V.I.S. // Neural Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Sora:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#e9ddff",
+                        "secondary-container": "#00affe",
+                        "on-tertiary-fixed-variant": "#5700c9",
+                        "primary-fixed": "#9cf0ff",
+                        "on-primary-fixed": "#001f24",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#8dcdff",
+                        "tertiary-fixed-dim": "#d1bcff",
+                        "secondary": "#8dcdff",
+                        "surface-container-lowest": "#0a0e14",
+                        "surface-container": "#1c2026",
+                        "on-secondary-fixed": "#001e30",
+                        "on-tertiary-container": "#6c00f7",
+                        "tertiary": "#f2e9ff",
+                        "surface-container-high": "#262a31",
+                        "on-tertiary-fixed": "#23005b",
+                        "on-surface-variant": "#bac9cc",
+                        "tertiary-container": "#d9c8ff",
+                        "on-primary-container": "#00626e",
+                        "primary-container": "#00e5ff",
+                        "inverse-surface": "#dfe2eb",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary": "#3c0090",
+                        "error-container": "#93000a",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface": "#10141a",
+                        "on-background": "#dfe2eb",
+                        "inverse-primary": "#006875",
+                        "on-secondary": "#00344f",
+                        "on-surface": "#dfe2eb",
+                        "on-primary": "#00363d",
+                        "inverse-on-surface": "#2d3137",
+                        "primary": "#c3f5ff",
+                        "surface-dim": "#10141a",
+                        "on-secondary-container": "#003f5f",
+                        "surface-container-highest": "#31353c",
+                        "surface-variant": "#31353c",
+                        "on-primary-fixed-variant": "#004f58",
+                        "outline": "#849396",
+                        "background": "#10141a",
+                        "surface-tint": "#00daf3",
+                        "surface-bright": "#353940",
+                        "secondary-fixed": "#cae6ff",
+                        "surface-container-low": "#181c22",
+                        "outline-variant": "#3b494c",
+                        "on-secondary-fixed-variant": "#004b70"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "unit": "4px",
+                        "margin-mobile": "20px",
+                        "panel-padding": "12px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Sora"],
+                        "body-lg": ["JetBrains Mono"],
+                        "body-md": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Sora"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-display": ["JetBrains Mono"],
+                        "headline-lg": ["Sora"],
+                        "headline-md": ["Sora"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "data-display": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0a0e14; /* Z-0 The Void */
+            background-image: 
+                linear-gradient(rgba(0, 218, 243, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 218, 243, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #c3f5ff;
+        }
+        
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 218, 243, 0.05) 50%, rgba(0, 218, 243, 0.05));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .scanning-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: rgba(0, 218, 243, 0.5);
+            box-shadow: 0 0 10px rgba(0, 218, 243, 0.8);
+            animation: scan 4s linear infinite;
+            z-index: 40;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            0% { top: -10%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 110%; opacity: 0; }
+        }
+
+        .glass-panel {
+            background: rgba(0, 218, 243, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 218, 243, 0.2);
+            position: relative;
+        }
+        
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: -1px; width: 8px; height: 8px;
+            border-top: 2px solid #00daf3; border-left: 2px solid #00daf3;
+        }
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; right: -1px; width: 8px; height: 8px;
+            border-bottom: 2px solid #00daf3; border-right: 2px solid #00daf3;
+        }
+
+        .custom-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 218, 243, 0.2);
+            outline: none;
+        }
+
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 24px;
+            background: #00daf3;
+            cursor: pointer;
+            border: 1px solid #c3f5ff;
+            box-shadow: 0 0 10px rgba(0, 218, 243, 0.5);
+        }
+
+        .custom-switch {
+            appearance: none;
+            width: 48px;
+            height: 24px;
+            background: rgba(0, 218, 243, 0.1);
+            border: 1px solid rgba(0, 218, 243, 0.4);
+            border-radius: 0;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .custom-switch::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 18px;
+            background: rgba(0, 218, 243, 0.5);
+            transition: all 0.3s;
+        }
+
+        .custom-switch:checked {
+            background: rgba(0, 218, 243, 0.2);
+            border-color: #00daf3;
+            box-shadow: 0 0 10px rgba(0, 218, 243, 0.3);
+        }
+
+        .custom-switch:checked::before {
+            left: 24px;
+            background: #00daf3;
+            box-shadow: 0 0 8px #00daf3;
+        }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0e14; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 218, 243, 0.3); }
+        ::-webkit-scrollbar-thumb:hover { background: #00daf3; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md text-primary bg-background overflow-x-hidden min-h-screen flex flex-col md:flex-row">
+<div class="scanline"></div>
+<!-- NavigationDrawer (Desktop) -->
+<nav class="hidden md:flex bg-surface-container-low/95 dark:bg-surface-container-low/95 h-full w-80 border-r border-primary/20 backdrop-blur-3xl flex-col py-8 z-30 fixed top-0 left-0">
+<div class="px-6 mb-8 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border border-primary/50 overflow-hidden relative">
+<div class="absolute inset-0 bg-primary/20 animate-pulse"></div>
+</div>
+<div>
+<h2 class="text-headline-md font-headline-md text-primary">OPERATOR_01</h2>
+<p class="text-label-caps font-label-caps text-primary/70">STARK INDUSTRIES SECURE</p>
+<p class="text-label-caps font-label-caps text-primary/50 mt-1">V.4.2.0</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 mt-4 w-full">
+<a class="text-on-surface-variant hover:text-primary hover:bg-primary/5 flex items-center gap-4 px-6 py-3 transition-colors" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-body-md">Main Console</span>
+</a>
+<a class="text-on-surface-variant hover:text-primary hover:bg-primary/5 flex items-center gap-4 px-6 py-3 transition-colors" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-body-md">System Intelligence</span>
+</a>
+<a class="text-on-surface-variant hover:text-primary hover:bg-primary/5 flex items-center gap-4 px-6 py-3 transition-colors" href="#">
+<span class="material-symbols-outlined">satellite_alt</span>
+<span class="font-body-md">Comm Hub</span>
+</a>
+<a class="text-on-surface-variant hover:text-primary hover:bg-primary/5 flex items-center gap-4 px-6 py-3 transition-colors" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-body-md">Security Protocols</span>
+</a>
+<a class="text-primary bg-primary/5 border-l-4 border-primary font-bold flex items-center gap-4 px-6 py-3 transition-colors" href="#" style="touch-action: manipulation;">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">psychology</span>
+<span class="font-body-md">Neural Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-80 relative min-h-screen pb-24 md:pb-8 flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-surface/10 dark:bg-surface/10 text-primary dark:text-primary docked full-width top-0 backdrop-blur-xl border-b border-primary/20 flat no shadows flex justify-between items-center w-full px-margin-mobile h-16 z-20 sticky top-0">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">hub</span>
+<h1 class="text-headline-sm font-headline-sm tracking-[0.2em] text-primary dark:text-primary animate-pulse">JARVIS</h1>
+</div>
+<button class="hover:bg-primary/10 hover:text-primary p-2 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined text-primary">sensors</span>
+</button>
+</header>
+<div class="p-4 md:p-8 max-w-5xl mx-auto w-full flex-1 relative z-10">
+<div class="scanning-bar"></div>
+<div class="mb-8 flex justify-between items-end border-b border-primary/30 pb-2">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg text-primary uppercase tracking-wider">[ NEURAL_LINK_PARAMETERS ]</h2>
+<p class="text-data-display font-data-display text-primary/70 mt-1">SYS.OP.AUTH // OVERRIDE_ENABLED</p>
+</div>
+<div class="text-right hidden sm:block">
+<p class="text-label-caps font-label-caps text-primary/50">SYSTEM LOAD</p>
+<p class="text-body-lg font-body-lg text-primary-fixed-dim">34.7%</p>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- SECURITY_PROTOCOLS Section -->
+<section class="glass-panel p-6 md:col-span-8 flex flex-col gap-6">
+<h3 class="text-headline-sm font-headline-sm text-primary uppercase border-b border-primary/20 pb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">security</span>
+                        SECURITY_PROTOCOLS
+                    </h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+<div class="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 hover:border-primary/30 transition-colors">
+<div>
+<p class="text-body-md font-body-md text-primary">Firewall Override</p>
+<p class="text-label-caps font-label-caps text-primary/50 mt-1">ENABLE EXTERNAL PORT ACCESS</p>
+</div>
+<input class="custom-switch" type="checkbox">
+</div>
+<div class="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 hover:border-primary/30 transition-colors">
+<div>
+<p class="text-body-md font-body-md text-primary">Biometric Sync</p>
+<p class="text-label-caps font-label-caps text-primary/50 mt-1">REQUIRE HOST VITALS</p>
+</div>
+<input checked="" class="custom-switch" type="checkbox">
+</div>
+<div class="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 hover:border-primary/30 transition-colors">
+<div>
+<p class="text-body-md font-body-md text-primary">Quantum Encryption</p>
+<p class="text-label-caps font-label-caps text-primary/50 mt-1">QKD KEY EXCHANGE</p>
+</div>
+<input checked="" class="custom-switch" type="checkbox">
+</div>
+<div class="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 hover:border-primary/30 transition-colors">
+<div>
+<p class="text-body-md font-body-md text-primary text-error">Failsafe Auto-Destruct</p>
+<p class="text-label-caps font-label-caps text-error/50 mt-1">CRITICAL OVERRIDE ONLY</p>
+</div>
+<input class="custom-switch" style="border-color: rgba(255,180,171,0.4);" type="checkbox">
+</div>
+</div>
+</section>
+<!-- Status Monitor -->
+<section class="glass-panel p-6 md:col-span-4 flex flex-col gap-4">
+<h3 class="text-headline-sm font-headline-sm text-primary uppercase border-b border-primary/20 pb-2">
+                        [ SYS_STATUS ]
+                    </h3>
+<div class="flex-1 flex flex-col justify-center gap-4">
+<div class="flex justify-between items-center text-data-display font-data-display">
+<span class="text-primary/70">CORE_TEMP</span>
+<span class="text-primary">42°C</span>
+</div>
+<div class="w-full h-1 bg-primary/10">
+<div class="h-full bg-primary" style="width: 42%;"></div>
+</div>
+<div class="flex justify-between items-center text-data-display font-data-display mt-2">
+<span class="text-primary/70">NEURAL_SYNC</span>
+<span class="text-primary">98.4%</span>
+</div>
+<div class="w-full h-1 bg-primary/10">
+<div class="h-full bg-primary" style="width: 98%;"></div>
+</div>
+<div class="mt-4 p-3 border border-primary/20 bg-primary/5 text-center">
+<span class="text-label-caps font-label-caps text-primary animate-pulse">CONNECTION STABLE</span>
+</div>
+</div>
+</section>
+<!-- NEURAL_LINK Parameters -->
+<section class="glass-panel p-6 md:col-span-12 flex flex-col gap-6 mt-2">
+<h3 class="text-headline-sm font-headline-sm text-primary uppercase border-b border-primary/20 pb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">psychology</span>
+                        AI_PARAMETERS
+                    </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Intelligence Level Slider -->
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-end border-b border-primary/20 pb-1">
+<label class="text-label-caps font-label-caps text-primary">INTELLIGENCE LEVEL</label>
+<span class="text-data-display font-data-display text-primary">LVL 9</span>
+</div>
+<input class="custom-slider mt-2" max="10" min="1" type="range" value="9">
+<div class="flex justify-between text-[8px] text-primary/40 font-data-display tracking-widest mt-1">
+<span class="">BASIC</span>
+<span class="">SENTIENT</span>
+</div>
+</div>
+<!-- Voice Frequency Slider -->
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-end border-b border-primary/20 pb-1">
+<label class="text-label-caps font-label-caps text-primary">VOICE FREQUENCY PITCH</label>
+<span class="text-data-display font-data-display text-primary">432 Hz</span>
+</div>
+<input class="custom-slider mt-2" max="800" min="200" type="range" value="432">
+<div class="flex justify-between text-[8px] text-primary/40 font-data-display tracking-widest mt-1">
+<span class="">DEEP</span>
+<span class="">HIGH</span>
+</div>
+</div>
+<!-- Response Latency -->
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-end border-b border-primary/20 pb-1">
+<label class="text-label-caps font-label-caps text-primary">COGNITIVE LATENCY</label>
+<span class="text-data-display font-data-display text-primary">12ms</span>
+</div>
+<input class="custom-slider mt-2" max="100" min="1" type="range" value="12">
+<div class="flex justify-between text-[8px] text-primary/40 font-data-display tracking-widest mt-1">
+<span class="">INSTANT</span>
+<span class="">DELAYED</span>
+</div>
+</div>
+</div>
+<div class="mt-4 flex justify-end">
+<button class="bg-primary/10 border border-primary text-primary px-6 py-2 font-label-caps text-label-caps hover:bg-primary hover:text-on-primary transition-all uppercase tracking-widest">
+                            APPLY_CHANGES
+                        </button>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden bg-surface/20 dark:bg-surface/20 backdrop-blur-2xl border-t border-primary/30 fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-2 pb-6 z-50">
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">dashboard</span>
+<span class="text-[10px] font-label-caps uppercase tracking-wider hidden">Console</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">memory</span>
+<span class="text-[10px] font-label-caps uppercase tracking-wider hidden">Memory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">forum</span>
+<span class="text-[10px] font-label-caps uppercase tracking-wider hidden">Comm</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container bg-primary/10 rounded-xl p-3 border border-primary/40 scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-2xl mb-1" style="font-variation-settings: &quot;FILL&quot; 1;">settings_input_component</span>
+<span class="text-[10px] font-label-caps uppercase tracking-wider hidden">Settings</span>
+</a>
+</nav>
+
+
+</body></html>

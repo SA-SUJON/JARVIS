@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AETHER_OS_v4.2 - COMM HUB</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Sora:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#5700c9",
+                        "tertiary-fixed-dim": "#d1bcff",
+                        "surface-dim": "#10141a",
+                        "tertiary-fixed": "#e9ddff",
+                        "background": "#10141a",
+                        "outline-variant": "#3b494c",
+                        "on-error": "#690005",
+                        "primary-container": "#00e5ff",
+                        "surface-container": "#1c2026",
+                        "on-secondary-fixed": "#001e30",
+                        "on-primary": "#00363d",
+                        "secondary-container": "#00affe",
+                        "on-surface-variant": "#bac9cc",
+                        "on-secondary": "#00344f",
+                        "inverse-surface": "#dfe2eb",
+                        "on-background": "#dfe2eb",
+                        "on-primary-fixed": "#001f24",
+                        "surface-container-high": "#262a31",
+                        "on-primary-fixed-variant": "#004f58",
+                        "primary-fixed": "#9cf0ff",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "primary": "#c3f5ff",
+                        "surface": "#10141a",
+                        "on-secondary-fixed-variant": "#004b70",
+                        "surface-container-low": "#181c22",
+                        "on-primary-container": "#00626e",
+                        "on-secondary-container": "#003f5f",
+                        "surface-container-highest": "#31353c",
+                        "on-tertiary": "#3c0090",
+                        "on-surface": "#dfe2eb",
+                        "surface-variant": "#31353c",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#00daf3",
+                        "on-tertiary-fixed": "#23005b",
+                        "tertiary": "#f2e9ff",
+                        "secondary-fixed-dim": "#8dcdff",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface-container-lowest": "#0a0e14",
+                        "outline": "#849396",
+                        "surface-bright": "#353940",
+                        "secondary": "#8dcdff",
+                        "secondary-fixed": "#cae6ff",
+                        "inverse-on-surface": "#2d3137",
+                        "on-tertiary-container": "#6c00f7",
+                        "tertiary-container": "#d9c8ff",
+                        "inverse-primary": "#006875"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "panel-padding": "12px",
+                        "gutter": "16px",
+                        "margin-desktop": "40px",
+                        "margin-mobile": "20px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Sora"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-display": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Sora"],
+                        "headline-lg": ["Sora"],
+                        "body-md": ["JetBrains Mono"],
+                        "body-lg": ["JetBrains Mono"],
+                        "headline-md": ["Sora"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "data-display": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            overflow: hidden; /* Prevent body scroll, handle internally */
+        }
+        
+        /* Z-1 HUD Layer Background Scanlines */
+        .scanlines {
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 229, 255, 0.05) 50%, rgba(0, 229, 255, 0.05));
+            background-size: 100% 4px;
+            pointer-events: none;
+            animation: scroll-scanlines 10s linear infinite;
+        }
+
+        @keyframes scroll-scanlines {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 100%; }
+        }
+
+        /* Glass Panel Brackets */
+        .bracket-panel {
+            position: relative;
+        }
+        .bracket-panel::before, .bracket-panel::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: theme('colors.outline-variant');
+            border-style: solid;
+            pointer-events: none;
+        }
+        .bracket-panel::before {
+            top: -1px; left: -1px;
+            border-width: 1px 0 0 1px;
+        }
+        .bracket-panel::after {
+            bottom: -1px; right: -1px;
+            border-width: 0 1px 1px 0;
+        }
+        
+        /* Active bracket glow */
+        .bracket-panel.active::before, .bracket-panel.active::after {
+            border-color: theme('colors.primary-container');
+            box-shadow: 0 0 5px theme('colors.primary-container');
+        }
+
+        /* Custom Scrollbar for brutalist feel */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: theme('colors.surface-container-lowest'); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.outline-variant'); 
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.primary-container'); 
+        }
+        
+        /* Waveform Animation */
+        .bar-anim {
+            animation: pulse-height 1.5s ease-in-out infinite alternate;
+        }
+        @keyframes pulse-height {
+            0% { height: 20%; }
+            100% { height: 100%; }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen relative font-body-md text-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Z-1 Scanlines Background -->
+<div class="fixed inset-0 z-0 scanlines"></div>
+<!-- SHARED COMPONENT: TopNavBar -->
+<nav class="flex justify-between items-center w-full px-gutter h-16 sticky top-0 z-50 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_0_15px_rgba(0,229,255,0.1)]">
+<!-- Left: Search (represented as icon per instructions "search_bar": "on_left") -->
+<div class="flex items-center gap-4 text-on-surface-variant hover:text-primary transition-all duration-300">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
+<span class="font-data-display text-data-display text-on-surface-variant opacity-50">SYS_QUERY...</span>
+</div>
+<!-- Center: Brand Logo -->
+<div class="font-headline-sm text-headline-sm font-black text-primary-container dark:text-primary-container tracking-widest uppercase text-center absolute left-1/2 -translate-x-1/2">
+            AETHER_OS_v4.2
+        </div>
+<!-- Right: Trailing Icon Actions -->
+<div class="flex items-center gap-4 text-primary dark:text-primary font-data-display text-data-display uppercase tracking-widest">
+<span class="material-symbols-outlined hover:bg-primary/10 hover:text-primary transition-all duration-300 p-1 cursor-crosshair">memory</span>
+<span class="material-symbols-outlined hover:bg-primary/10 hover:text-primary transition-all duration-300 p-1 cursor-crosshair">sensors</span>
+<span class="material-symbols-outlined hover:bg-primary/10 hover:text-primary transition-all duration-300 p-1 cursor-crosshair">security</span>
+</div>
+</nav>
+<!-- Main Layout Grid -->
+<div class="flex h-[calc(100vh-64px)] w-full overflow-hidden relative z-10">
+<!-- SHARED COMPONENT: SideNavBar -->
+<aside class="h-full w-64 border-r border-outline-variant/30 bg-surface-container-lowest/90 dark:bg-surface-container-lowest/90 backdrop-blur-3xl flex flex-col pt-8 z-40 shrink-0">
+<!-- Header section based on JSON -->
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3 mb-2">
+<!-- Purely typographic avatar replacing image request -->
+<div class="w-10 h-10 border border-primary-container bg-primary/10 flex items-center justify-center font-headline-sm text-headline-sm text-primary-container">
+                        01
+                    </div>
+<div>
+<div class="font-headline-sm text-headline-sm text-primary uppercase">OPERATOR_01</div>
+<div class="font-label-caps text-label-caps text-secondary">LINK_STABLE_98%</div>
+</div>
+</div>
+</div>
+<!-- Tabs -->
+<nav class="flex flex-col flex-1 font-label-caps text-label-caps">
+<!-- CORE (Inactive) -->
+<a class="flex items-center gap-4 text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">hub</span>
+<span>CORE</span>
+</a>
+<!-- NEURAL (Inactive) -->
+<a class="flex items-center gap-4 text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">psychology</span>
+<span>NEURAL</span>
+</a>
+<!-- NETWORK (Active - Semantic match for Comm Hub) -->
+<a class="flex items-center gap-4 text-primary border-l-2 border-primary bg-primary/5 py-4 pl-6 animate-pulse transition-opacity" href="#">
+<span class="material-symbols-outlined">lan</span>
+<span>NETWORK</span>
+</a>
+<!-- SECURITY (Inactive) -->
+<a class="flex items-center gap-4 text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">verified_user</span>
+<span>SECURITY</span>
+</a>
+<!-- SYSTEM (Inactive) -->
+<a class="flex items-center gap-4 text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">settings</span>
+<span>SYSTEM</span>
+</a>
+</nav>
+</aside>
+<!-- MAIN APPLICATION AREA (Comm Hub) -->
+<main class="flex-1 flex bg-background/50 backdrop-blur-md">
+<!-- LEFT PANEL: Active Channels -->
+<section class="w-72 border-r border-outline-variant/30 flex flex-col bg-surface-container/30">
+<header class="p-4 border-b border-outline-variant/30 flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant">[ CHANNELS ]</span>
+<span class="material-symbols-outlined text-outline-variant text-[16px]">add</span>
+</header>
+<div class="flex-1 overflow-y-auto p-4 space-y-2">
+<!-- Channel 1: Active -->
+<div class="bracket-panel active p-3 bg-primary/10 border border-primary/20 cursor-pointer flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary-container animate-ping"></div>
+<div class="flex-1">
+<div class="font-data-display text-data-display text-primary-container">Dir. Stark</div>
+<div class="font-label-caps text-label-caps text-secondary opacity-70">ENCRYPTED_L9</div>
+</div>
+</div>
+<!-- Channel 2: Inactive -->
+<div class="bracket-panel p-3 border border-outline-variant/30 cursor-pointer flex items-center gap-3 hover:bg-surface-variant/20 transition-colors opacity-70">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<div class="flex-1">
+<div class="font-data-display text-data-display text-on-surface">Agent_R</div>
+<div class="font-label-caps text-label-caps text-outline-variant">IDLE_42m</div>
+</div>
+</div>
+<!-- Channel 3: Inactive -->
+<div class="bracket-panel p-3 border border-outline-variant/30 cursor-pointer flex items-center gap-3 hover:bg-surface-variant/20 transition-colors opacity-70">
+<div class="w-2 h-2 rounded-full bg-secondary-container"></div>
+<div class="flex-1">
+<div class="font-data-display text-data-display text-on-surface">Avengers_Initiative</div>
+<div class="font-label-caps text-label-caps text-outline-variant">MULTI_NODE</div>
+</div>
+</div>
+</div>
+</section>
+<!-- CENTER PANEL: Chat Area -->
+<section class="flex-1 flex flex-col relative z-20">
+<header class="h-14 border-b border-outline-variant/30 bg-surface/50 flex items-center px-6 justify-between backdrop-blur-sm">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary-container">lock</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">SECURE COMMLINK: <span class="text-primary-container">Dir. Stark</span></h2>
+</div>
+<div class="font-data-display text-data-display text-secondary border border-secondary/30 px-2 py-1 bg-secondary/5">
+                        PING: 12ms
+                    </div>
+</header>
+<div class="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col">
+<!-- Message: J.A.R.V.I.S (System) - Left Aligned -->
+<div class="self-start max-w-[80%] flex flex-col gap-1">
+<div class="font-label-caps text-label-caps text-secondary ml-1">J.A.R.V.I.S. // 14:02:44</div>
+<div class="bracket-panel p-4 bg-surface-container/60 border border-outline-variant/50 backdrop-blur-md rounded-br-lg rounded-tr-lg rounded-bl-sm">
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">Sir, I have isolated the anomalous signal originating from the primary sub-dermal transceiver. It appears to be an encrypted packet masking as standard telemetry.</p>
+<div class="mt-3 p-2 bg-background/80 border border-secondary/20 font-data-display text-data-display text-secondary text-[10px] break-all">
+                                0xFA4B ... DECRYPT_PENDING ... THREAD_ID: 994
+                            </div>
+</div>
+</div>
+<!-- Message: Stark - Right Aligned -->
+<div class="self-end max-w-[80%] flex flex-col gap-1 items-end">
+<div class="font-label-caps text-label-caps text-primary-container mr-1">T. STARK // 14:03:12</div>
+<div class="bracket-panel p-4 bg-primary/10 border border-primary/30 backdrop-blur-md rounded-bl-lg rounded-tl-lg rounded-br-sm text-right">
+<p class="font-body-md text-body-md text-primary-fixed leading-relaxed">Run a deep diagnostic on the Mark 43 OS partition. I want to know exactly how it bypassed the firewall. Upload the payload data to my private server.</p>
+</div>
+</div>
+<!-- Message: J.A.R.V.I.S (System) - Left Aligned with attached asset logic -->
+<div class="self-start max-w-[80%] flex flex-col gap-1">
+<div class="font-label-caps text-label-caps text-secondary ml-1">J.A.R.V.I.S. // 14:03:45</div>
+<div class="bracket-panel p-4 bg-surface-container/60 border border-outline-variant/50 backdrop-blur-md rounded-br-lg rounded-tr-lg rounded-bl-sm">
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">Diagnostic initiated. Preliminary scans indicate a zero-day exploit targeting the gyro-stabilization subroutine. Compiling telemetry asset now.</p>
+<!-- Inline attached asset chip -->
+<div class="mt-3 inline-flex items-center gap-2 px-3 py-1 border border-primary-container/50 bg-primary-container/10 text-primary-container hover:bg-primary-container/20 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[16px]">attachment</span>
+<span class="font-data-display text-data-display">MK43_TELEM.dat</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-6 bg-surface-container-low/80 border-t border-outline-variant/30">
+<div class="relative">
+<label class="absolute -top-4 left-0 font-label-caps text-label-caps text-outline">INPUT_STREAM_</label>
+<div class="flex items-end gap-4">
+<input class="w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary-container focus:ring-0 px-0 py-2 font-data-display text-data-display text-on-surface placeholder:text-outline-variant/50 transition-colors" placeholder="Awaiting input command..." type="text"/>
+<button class="shrink-0 w-10 h-10 border border-primary bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+<!-- Scanning line active state indicator for input -->
+<div class="absolute bottom-0 left-0 h-[1px] w-0 bg-primary-container transition-all duration-500 ease-out" id="input-scan"></div>
+</div>
+</div>
+</section>
+<!-- RIGHT PANEL: Telemetry & Assets -->
+<aside class="w-80 border-l border-outline-variant/30 bg-surface-container-low/50 backdrop-blur-xl flex flex-col overflow-y-auto">
+<header class="p-4 border-b border-outline-variant/30 bg-surface/40 sticky top-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant">[ TELEMETRY_DATA ]</span>
+</header>
+<div class="p-4 space-y-6">
+<!-- Module: Audio Waveform -->
+<div class="bracket-panel border border-outline-variant/30 p-4">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-label-caps text-label-caps text-secondary">AUDIO_SIG_ANALYSIS</h3>
+<span class="material-symbols-outlined text-secondary text-[14px]">graphic_eq</span>
+</div>
+<div class="h-16 flex items-end justify-between gap-1 overflow-hidden opacity-80">
+<!-- Simulated waveform bars with random animation delays -->
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.1s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.5s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.2s"></div>
+<div class="w-2 bg-primary-container bar-anim" style="animation-delay: 0.8s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.3s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.6s"></div>
+<div class="w-2 bg-primary-container bar-anim" style="animation-delay: 0.4s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.9s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.2s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.7s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.1s"></div>
+<div class="w-2 bg-secondary bar-anim" style="animation-delay: 0.5s"></div>
+</div>
+<div class="mt-2 font-data-display text-[10px] text-outline-variant text-right">FREQ: 14.4 kHz</div>
+</div>
+<!-- Module: Encryption Status -->
+<div class="bracket-panel border border-outline-variant/30 p-4">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-label-caps text-label-caps text-error">ENCRYPTION_MONITOR</h3>
+<span class="material-symbols-outlined text-error text-[14px]">warning</span>
+</div>
+<!-- HUD Gauge simulation -->
+<div class="flex items-center gap-4 mb-4">
+<div class="relative w-12 h-12 rounded-full border-2 border-dashed border-error/50 flex items-center justify-center">
+<span class="font-data-display text-[10px] text-error">WARN</span>
+</div>
+<div class="flex-1 space-y-1">
+<div class="w-full h-1 bg-surface-bright rounded-full overflow-hidden">
+<div class="w-[85%] h-full bg-error"></div>
+</div>
+<div class="flex justify-between font-label-caps text-[8px] text-outline-variant">
+<span>INTEGRITY</span>
+<span>15% FAIL RATE</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-dim p-2 border border-outline/20 font-data-display text-[10px] text-error/80 uppercase">
+<marquee class="opacity-70" scrollamount="2">DETECTED_INTRUSION_ATTEMPT // SOURCE: UNKNOWN // REROUTING_KEYS...</marquee>
+</div>
+</div>
+<!-- Module: Attached Assets -->
+<div class="bracket-panel border border-outline-variant/30 p-4">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-label-caps text-label-caps text-primary">ASSET_CACHE</h3>
+<span class="material-symbols-outlined text-primary text-[14px]">folder_special</span>
+</div>
+<div class="space-y-2">
+<!-- Asset Item -->
+<div class="flex items-center gap-3 p-2 border border-primary/20 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-primary-container text-[18px]">data_object</span>
+<div class="flex-1">
+<div class="font-data-display text-[11px] text-primary-container">MK43_TELEM.dat</div>
+<div class="font-label-caps text-[8px] text-secondary">SIZE: 1.4GB | STATUS: PARSING</div>
+</div>
+</div>
+<!-- Asset Item -->
+<div class="flex items-center gap-3 p-2 border border-outline-variant/30 hover:bg-surface-variant/20 cursor-pointer transition-colors opacity-50">
+<span class="material-symbols-outlined text-outline-variant text-[18px]">description</span>
+<div class="flex-1">
+<div class="font-data-display text-[11px] text-on-surface">SYS_LOG_984.txt</div>
+<div class="font-label-caps text-[8px] text-outline-variant">SIZE: 12KB | STATUS: ARCHIVED</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</main>
+</div>
+<script>
+        // Simple script to animate input bottom border on focus
+        const inputField = document.querySelector('input[type="text"]');
+        const scanLine = document.getElementById('input-scan');
+
+        inputField.addEventListener('focus', () => {
+            scanLine.style.width = '100%';
+        });
+
+        inputField.addEventListener('blur', () => {
+            scanLine.style.width = '0';
+        });
+    </script>
+</body></html>

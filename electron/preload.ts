@@ -1,0 +1,38 @@
+import { contextBridge, ipcRenderer } from 'electron';
+import type { ChatMessage, ModelInfo, ProviderConfig, ProviderId } from './providers.js';
+
+contextBridge.exposeInMainWorld('jarvis', {
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (input: { providers?: ProviderConfig[]; voice?: string; voiceProfile?: 'natural' | 'classic' | 'deep'; language?: string; wakeWord?: boolean; voiceEnabled?: boolean; assistantName?: string; userName?: string; legacyKeys?: { CohereAPIKey?: string; GroqAPIKey?: string; HuggingFaceAPIKey?: string } }) => ipcRenderer.invoke('settings:set', input),
+  faceProfiles: () => ipcRenderer.invoke('face-profiles:list'),
+  saveFaceProfile: (profile: { id?: string; displayName: string; relation: 'operator' | 'family'; greeting?: string; facts?: { age?: number | null; work?: string; notes?: string }; embeddings: number[][]; voiceEmbeddings?: number[][] }) => ipcRenderer.invoke('face-profiles:save', profile),
+  deleteFaceProfile: (id: string) => ipcRenderer.invoke('face-profiles:delete', id),
+  clearFaceProfiles: () => ipcRenderer.invoke('face-profiles:clear'),
+  listModels: (provider: ProviderConfig) => ipcRenderer.invoke('models:list', provider),
+  diagnostics: () => ipcRenderer.invoke('system:diagnostics'),
+  networkStatus: () => ipcRenderer.invoke('system:network'),
+  deviceIdentity: () => ipcRenderer.invoke('system:identity'),
+  requestTelemetry: () => ipcRenderer.invoke('system:telemetry-request'),
+  onSystemTelemetry: (callback: (payload: { diagnostics?: any; network?: any; identity?: any; collectedAt?: string }) => void) => { const handler = (_event: Electron.IpcRendererEvent, payload: { diagnostics?: any; network?: any; identity?: any; collectedAt?: string }) => callback(payload); ipcRenderer.on('system:telemetry', handler); return () => ipcRenderer.removeListener('system:telemetry', handler); },
+  adb: (command: string) => ipcRenderer.invoke('system:adb', command),
+  adbStatus: () => ipcRenderer.invoke('system:adb-status'),
+  currentLocation: () => ipcRenderer.invoke('system:location'),
+  weather: (latitude: number, longitude: number) => ipcRenderer.invoke('system:weather', latitude, longitude),
+  searchLocation: (query: string) => ipcRenderer.invoke('system:map-search', query),
+  systemLogs: () => ipcRenderer.invoke('system:logs'),
+  query: (input: { query: string; providers: ProviderConfig[]; preferred?: ProviderId; history?: ChatMessage[] }) => ipcRenderer.invoke('assistant:query', input),
+  pythonCapability: (input: { operation: string; payload?: Record<string, any> }) => ipcRenderer.invoke('python:capability', input),
+  voiceEmbed: async (audioBase64: string) => { const result = await ipcRenderer.invoke('python:capability', { operation: 'voice_embed', payload: { audioBase64 } }); return (result?.embedding || []) as number[]; },
+  voiceStatus: () => ipcRenderer.invoke('voice:status') as Promise<{ nativeListen: boolean; piper: boolean; kokoro: boolean; edge: boolean; note: string }>,
+  sttStart: (language?: string) => ipcRenderer.invoke('stt:start', language) as Promise<{ available: boolean; running?: boolean; reason?: string }>,
+  sttStatus: () => ipcRenderer.invoke('stt:status') as Promise<{ running: boolean; script: string }>,
+  sttStop: () => ipcRenderer.invoke('stt:stop') as Promise<boolean>,
+  onSttTranscript: (callback: (payload: { text: string; confidence?: number }) => void) => { const handler = (_event: Electron.IpcRendererEvent, payload: string | { text: string; confidence?: number }) => callback(typeof payload === 'string' ? { text: payload } : payload); ipcRenderer.on('stt:transcript', handler); return () => ipcRenderer.removeListener('stt:transcript', handler); },
+  onSttError: (callback: (message: string) => void) => { const handler = (_event: Electron.IpcRendererEvent, message: string) => callback(message); ipcRenderer.on('stt:error', handler); return () => ipcRenderer.removeListener('stt:error', handler); },
+  speak: (input: { text: string; voice: string; language?: string; voiceProfile?: 'natural' | 'classic' | 'deep' }) => ipcRenderer.invoke('voice:speak', input),
+  openUrl: (url: string) => ipcRenderer.invoke('system:open-url', url),
+  requestElevation: () => ipcRenderer.invoke('system:request-elevation') as Promise<boolean>,
+  minimize: () => ipcRenderer.invoke('window:minimize'),
+  maximize: () => ipcRenderer.invoke('window:maximize'),
+  close: () => ipcRenderer.invoke('window:close')
+});

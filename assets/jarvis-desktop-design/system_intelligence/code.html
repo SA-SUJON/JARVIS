@@ -1,0 +1,365 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>System Intelligence // MARK_04</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#e9ddff",
+                        "secondary-container": "#00affe",
+                        "on-tertiary-fixed-variant": "#5700c9",
+                        "primary-fixed": "#9cf0ff",
+                        "on-primary-fixed": "#001f24",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#8dcdff",
+                        "tertiary-fixed-dim": "#d1bcff",
+                        "secondary": "#8dcdff",
+                        "surface-container-lowest": "#0a0e14",
+                        "surface-container": "#1c2026",
+                        "on-secondary-fixed": "#001e30",
+                        "on-tertiary-container": "#6c00f7",
+                        "tertiary": "#f2e9ff",
+                        "surface-container-high": "#262a31",
+                        "on-tertiary-fixed": "#23005b",
+                        "on-surface-variant": "#bac9cc",
+                        "tertiary-container": "#d9c8ff",
+                        "on-primary-container": "#00626e",
+                        "primary-container": "#00e5ff",
+                        "inverse-surface": "#dfe2eb",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary": "#3c0090",
+                        "error-container": "#93000a",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface": "#10141a",
+                        "on-background": "#dfe2eb",
+                        "inverse-primary": "#006875",
+                        "on-secondary": "#00344f",
+                        "on-surface": "#dfe2eb",
+                        "on-primary": "#00363d",
+                        "inverse-on-surface": "#2d3137",
+                        "primary": "#c3f5ff",
+                        "surface-dim": "#10141a",
+                        "on-secondary-container": "#003f5f",
+                        "surface-container-highest": "#31353c",
+                        "surface-variant": "#31353c",
+                        "on-primary-fixed-variant": "#004f58",
+                        "outline": "#849396",
+                        "background": "#10141a",
+                        "surface-tint": "#00daf3",
+                        "surface-bright": "#353940",
+                        "secondary-fixed": "#cae6ff",
+                        "surface-container-low": "#181c22",
+                        "outline-variant": "#3b494c",
+                        "on-secondary-fixed-variant": "#004b70"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "unit": "4px",
+                        "margin-mobile": "20px",
+                        "panel-padding": "12px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Sora"],
+                        "body-lg": ["JetBrains Mono"],
+                        "body-md": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Sora"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-display": ["JetBrains Mono"],
+                        "headline-lg": ["Sora"],
+                        "headline-md": ["Sora"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "data-display": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 10;
+            position: absolute;
+            pointer-events: none;
+            background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(0, 218, 243, 0.1) 50%, rgba(0, 0, 0, 0) 100%);
+            opacity: 0.1;
+            animation: scanline 8s linear infinite;
+        }
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        .tech-border {
+            position: relative;
+        }
+        .tech-border::before, .tech-border::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: theme('colors.primary-fixed-dim');
+            border-style: solid;
+        }
+        .tech-border::before {
+            top: -1px; left: -1px;
+            border-width: 1px 0 0 1px;
+        }
+        .tech-border::after {
+            bottom: -1px; right: -1px;
+            border-width: 0 1px 1px 0;
+        }
+        .glow-box {
+            box-shadow: 0 0 10px rgba(0, 218, 243, 0.2) inset, 0 0 5px rgba(0, 218, 243, 0.2);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex overflow-hidden selection:bg-primary-container selection:text-on-primary-container relative">
+<div class="scanline"></div>
+<!-- Navigation Drawer (Desktop) -->
+<aside class="hidden md:flex flex-col h-full w-80 border-r border-primary/20 backdrop-blur-3xl bg-surface-container-low/95 z-20 shrink-0 py-8 relative">
+<div class="px-6 mb-8 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border border-primary/50 flex items-center justify-center bg-primary/10 glow-box relative overflow-hidden">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: &quot;FILL&quot; 1;">person</span>
+<div class="absolute inset-0 bg-primary/20 animate-pulse"></div>
+</div>
+<div>
+<h2 class="text-headline-md font-headline-md text-primary tracking-wider">OPERATOR_01</h2>
+<p class="text-label-caps font-label-caps text-on-surface-variant">STARK INDUSTRIES SECURE // V.4.2.0</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-2 px-4">
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="text-label-caps font-label-caps">Main Console</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-primary bg-primary/5 border-l-4 border-primary font-bold shadow-[0_0_15px_rgba(0,218,243,0.1)_inset]" href="#">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: &quot;FILL&quot; 1;">query_stats</span>
+<span class="text-label-caps font-label-caps tracking-widest">System Intelligence</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">satellite_alt</span>
+<span class="text-label-caps font-label-caps">Comm Hub</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="text-label-caps font-label-caps">Security Protocols</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span class="text-label-caps font-label-caps">Neural Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<div class="text-data-display font-data-display text-outline text-xs opacity-50 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                SYSTEM ONLINE
+            </div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+<!-- Background Grid -->
+<div class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(to right, rgba(0, 218, 243, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 218, 243, 0.05) 1px, transparent 1px); background-size: 40px 40px;"></div>
+<!-- TopAppBar (Mobile & Desktop) -->
+<header class="flex justify-between items-center w-full px-margin-mobile h-16 bg-surface/10 backdrop-blur-xl border-b border-primary/20 z-20 shrink-0">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary md:hidden">menu</span>
+<span class="material-symbols-outlined text-primary animate-pulse">hub</span>
+<h1 class="text-headline-sm font-headline-sm tracking-[0.2em] text-primary">JARVIS</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right hidden md:block mr-2">
+<p class="text-data-display font-data-display text-primary">SYS.LOAD: <span class="text-secondary-container">42%</span></p>
+</div>
+<span class="material-symbols-outlined text-primary animate-pulse">sensors</span>
+</div>
+</header>
+<!-- Canvas Content -->
+<div class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop z-10 relative custom-scrollbar">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-8 border-b border-primary/20 pb-4">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg text-primary-fixed-dim uppercase tracking-wider glow-text">Neural Network Status</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">[ ACTIVE NODES: 24/24 ] [ LATENCY: 12ms ]</p>
+</div>
+<div class="hidden md:flex gap-2">
+<button class="px-4 py-2 border border-primary/40 text-primary-container bg-primary/5 hover:bg-primary/20 transition-all font-label-caps text-label-caps tech-border flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">refresh</span>
+                        RECALIBRATE
+                    </button>
+<button class="px-4 py-2 border border-primary/40 text-primary-container bg-primary/5 hover:bg-primary/20 transition-all font-label-caps text-label-caps tech-border">
+                        [ SYSTEM DIAGNOSTICS ]
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter mb-8">
+<!-- Main Core Overview -->
+<div class="md:col-span-8 bg-surface-container-low/40 border border-primary/20 backdrop-blur-md p-panel-padding tech-border glow-box relative min-h-[300px] flex flex-col justify-between overflow-hidden">
+<div class="absolute -right-20 -top-20 opacity-20 pointer-events-none">
+<svg class="animate-spin-slow" height="300" style="animation: spin 20s linear infinite;" viewBox="0 0 100 100" width="300">
+<circle class="text-primary" cx="50" cy="50" fill="none" r="45" stroke="currentColor" stroke-dasharray="2 4" stroke-width="0.5"></circle>
+<circle class="text-primary" cx="50" cy="50" fill="none" r="35" stroke="currentColor" stroke-dasharray="5 5" stroke-width="1"></circle>
+<circle class="text-secondary-container" cx="50" cy="50" fill="none" r="25" stroke="currentColor" stroke-dasharray="10 5" stroke-width="2"></circle>
+</svg>
+</div>
+<div>
+<div class="flex items-center justify-between border-b border-primary/10 pb-2 mb-4">
+<span class="text-label-caps font-label-caps text-primary tracking-widest uppercase flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+                                Primary Cortex
+                            </span>
+<span class="text-data-display font-data-display text-secondary-container animate-pulse">OPTIMAL</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<p class="text-data-display font-data-display text-outline-variant mb-1">COGNITIVE LOAD</p>
+<div class="text-headline-md font-headline-md text-primary">78<span class="text-body-sm text-outline">%</span></div>
+</div>
+<div>
+<p class="text-data-display font-data-display text-outline-variant mb-1">PROCESSING SPEED</p>
+<div class="text-headline-md font-headline-md text-primary">3.2<span class="text-body-sm text-outline">PFLOPS</span></div>
+</div>
+</div>
+</div>
+<div class="mt-8">
+<p class="text-label-caps font-label-caps text-outline-variant mb-2">SYNAPTIC ACTIVITY</p>
+<div class="h-16 w-full flex items-end gap-1">
+<!-- Simulated Chart -->
+<div class="w-full bg-primary/20 h-[40%] rounded-t-sm transition-all duration-500 hover:bg-primary/40 cursor-pointer"></div>
+<div class="w-full bg-primary/20 h-[60%] rounded-t-sm transition-all duration-500 hover:bg-primary/40 cursor-pointer"></div>
+<div class="w-full bg-primary/20 h-[30%] rounded-t-sm transition-all duration-500 hover:bg-primary/40 cursor-pointer"></div>
+<div class="w-full bg-primary/20 h-[80%] rounded-t-sm transition-all duration-500 hover:bg-primary/40 cursor-pointer relative"><div class="absolute -top-1 left-1/2 w-1 h-1 bg-secondary-container rounded-full shadow-[0_0_5px_#00affe]"></div></div>
+<div class="w-full bg-primary/20 h-[50%] rounded-t-sm transition-all duration-500 hover:bg-primary/40 cursor-pointer"></div>
+<div class="w-full bg-primary/20 h-[70%] rounded-t-sm transition-all duration-500 hover:bg-primary/40 cursor-pointer"></div>
+<div class="w-full bg-secondary-container/40 h-[90%] rounded-t-sm transition-all duration-500 border-t border-secondary-container"></div>
+</div>
+</div>
+</div>
+<!-- Sub-Modules Grid -->
+<div class="md:col-span-4 grid grid-cols-2 gap-unit">
+<!-- Module 1 -->
+<div class="bg-surface/30 border border-primary/20 p-3 flex flex-col justify-between hover:bg-primary/10 transition-colors cursor-pointer group tech-border">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary group-hover:text-secondary-container transition-colors" style="font-variation-settings: &quot;FILL&quot; 1;">visibility</span>
+<span class="text-data-display text-outline text-[10px]">MOD_01</span>
+</div>
+<div>
+<div class="text-label-caps font-label-caps text-on-surface mb-1">VISUAL PROCESSING</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[85%]"></div>
+</div>
+</div>
+</div>
+<!-- Module 2 -->
+<div class="bg-surface/30 border border-primary/20 p-3 flex flex-col justify-between hover:bg-primary/10 transition-colors cursor-pointer group tech-border">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary group-hover:text-secondary-container transition-colors">translate</span>
+<span class="text-data-display text-outline text-[10px]">MOD_02</span>
+</div>
+<div>
+<div class="text-label-caps font-label-caps text-on-surface mb-1">NATURAL LANG</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[42%]"></div>
+</div>
+</div>
+</div>
+<!-- Module 3 -->
+<div class="bg-surface/30 border border-primary/20 p-3 flex flex-col justify-between hover:bg-primary/10 transition-colors cursor-pointer group tech-border">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary group-hover:text-secondary-container transition-colors">timeline</span>
+<span class="text-data-display text-outline text-[10px]">MOD_03</span>
+</div>
+<div>
+<div class="text-label-caps font-label-caps text-on-surface mb-1">PREDICTIVE</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-[98%] shadow-[0_0_5px_#00affe]"></div>
+</div>
+</div>
+</div>
+<!-- Module 4 -->
+<div class="bg-surface/30 border border-primary/20 p-3 flex flex-col justify-between hover:bg-primary/10 transition-colors cursor-pointer group tech-border">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary group-hover:text-secondary-container transition-colors">shield</span>
+<span class="text-data-display text-outline text-[10px]">MOD_04</span>
+</div>
+<div>
+<div class="text-label-caps font-label-caps text-on-surface mb-1">DEFENSE NET</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[100%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Real-time Logs Terminal -->
+<div class="border border-primary/30 bg-[#0a0e14]/80 backdrop-blur-xl h-64 tech-border flex flex-col">
+<div class="bg-surface-container-high border-b border-primary/20 px-3 py-1 flex items-center justify-between">
+<span class="text-label-caps font-label-caps text-primary tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">terminal</span>
+                        LIVE_FEED.SH
+                    </span>
+<div class="flex gap-1">
+<span class="w-2 h-2 bg-outline rounded-full"></span>
+<span class="w-2 h-2 bg-outline rounded-full"></span>
+<span class="w-2 h-2 bg-primary rounded-full"></span>
+</div>
+</div>
+<div class="flex-1 p-3 overflow-y-auto text-data-display font-data-display text-primary/80 font-mono tracking-tight leading-relaxed" id="terminal-output">
+<div class=""><span class="text-outline">[10:42:01]</span> INIT SYSTEM DIAGNOSTICS... <span class="text-secondary-container">OK</span></div>
+<div class=""><span class="text-outline">[10:42:02]</span> ESTABLISHING UPLINK TO SATELLITE NETWORK... <span class="text-secondary-container">CONNECTED</span></div>
+<div class=""><span class="text-outline">[10:42:05]</span> SCANNING SECTOR 7G FOR ANOMALIES... <span class="text-outline-variant">NO MATCHES FOUND</span></div>
+<div class=""><span class="text-outline">[10:42:12]</span> NEURAL NET SYNC IN PROGRESS... <span class="text-primary">[||||||||  ] 80%</span></div>
+<div class=""><span class="text-outline">[10:42:15]</span> WARNING: MINOR FLUCTUATION IN POWER COIL #4</div>
+<div class="text-secondary-container"><span class="text-outline">[10:42:18]</span> AUTO-CORRECTING POWER FLOW... SUCCESS</div>
+<div class=""><span class="text-outline">[10:42:20]</span> AWAITING OPERATOR INPUT_ <span class="animate-pulse bg-primary w-2 h-4 inline-block align-middle ml-1"></span></div>
+</div>
+</div>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-2 pb-6 bg-surface/20 backdrop-blur-2xl border-t border-primary/30 z-50 shadow-[0_0_20px_rgba(0,218,243,0.15)]">
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container bg-primary/10 rounded-xl p-3 border border-primary/40 hover:text-primary transition-colors scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">memory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">forum</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+</a>
+</nav>
+</main>
+
+
+</body></html>

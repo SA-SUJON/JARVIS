@@ -1,0 +1,355 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>MARK_04 // J.A.R.V.I.S. Main Console</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed": "#e9ddff",
+                        "secondary-container": "#00affe",
+                        "on-tertiary-fixed-variant": "#5700c9",
+                        "primary-fixed": "#9cf0ff",
+                        "on-primary-fixed": "#001f24",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#8dcdff",
+                        "tertiary-fixed-dim": "#d1bcff",
+                        "secondary": "#8dcdff",
+                        "surface-container-lowest": "#0a0e14",
+                        "surface-container": "#1c2026",
+                        "on-secondary-fixed": "#001e30",
+                        "on-tertiary-container": "#6c00f7",
+                        "tertiary": "#f2e9ff",
+                        "surface-container-high": "#262a31",
+                        "on-tertiary-fixed": "#23005b",
+                        "on-surface-variant": "#bac9cc",
+                        "tertiary-container": "#d9c8ff",
+                        "on-primary-container": "#00626e",
+                        "primary-container": "#00e5ff",
+                        "inverse-surface": "#dfe2eb",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary": "#3c0090",
+                        "error-container": "#93000a",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface": "#10141a",
+                        "on-background": "#dfe2eb",
+                        "inverse-primary": "#006875",
+                        "on-secondary": "#00344f",
+                        "on-surface": "#dfe2eb",
+                        "on-primary": "#00363d",
+                        "inverse-on-surface": "#2d3137",
+                        "primary": "#c3f5ff",
+                        "surface-dim": "#10141a",
+                        "on-secondary-container": "#003f5f",
+                        "surface-container-highest": "#31353c",
+                        "surface-variant": "#31353c",
+                        "on-primary-fixed-variant": "#004f58",
+                        "outline": "#849396",
+                        "background": "#10141a",
+                        "surface-tint": "#00daf3",
+                        "surface-bright": "#353940",
+                        "secondary-fixed": "#cae6ff",
+                        "surface-container-low": "#181c22",
+                        "outline-variant": "#3b494c",
+                        "on-secondary-fixed-variant": "#004b70"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "40px",
+                        "unit": "4px",
+                        "margin-mobile": "20px",
+                        "panel-padding": "12px",
+                        "gutter": "16px"
+                    },
+                    fontFamily: {
+                        "headline-sm": ["Sora"],
+                        "body-lg": ["JetBrains Mono"],
+                        "body-md": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Sora"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-display": ["JetBrains Mono"],
+                        "headline-lg": ["Sora"],
+                        "headline-md": ["Sora"]
+                    },
+                    fontSize: {
+                        "headline-sm": ["18px", { lineHeight: "24px", fontWeight: "600" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "headline-lg-mobile": ["26px", { lineHeight: "32px", fontWeight: "700" }],
+                        "label-caps": ["10px", { lineHeight: "12px", letterSpacing: "0.1em", fontWeight: "700" }],
+                        "data-display": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "0.01em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .hud-scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 218, 243, 0.5);
+            animation: scan 4s linear infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+
+        .radar-sweep {
+            background: conic-gradient(from 0deg, transparent 70%, rgba(0, 218, 243, 0.8) 100%);
+            animation: spin 3s linear infinite;
+            border-radius: 50%;
+        }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .glass-panel {
+            background: rgba(0, 218, 243, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 218, 243, 0.2);
+            position: relative;
+        }
+        .glass-panel::before, .glass-panel::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border: 1px solid theme('colors.primary');
+        }
+        .glass-panel::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .glass-panel::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+        /* Scrollbar styling for HUD feel */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: theme('colors.primary-fixed-dim'); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md overflow-hidden antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Background grid -->
+<div class="fixed inset-0 pointer-events-none opacity-10" style="background-image: linear-gradient(theme('colors.primary') 1px, transparent 1px), linear-gradient(90deg, theme('colors.primary') 1px, transparent 1px); background-size: 40px 40px;"></div>
+<div class="hud-scan-line"></div>
+<div class="flex h-screen w-full">
+<!-- Navigation Drawer (Desktop) -->
+<nav class="hidden md:flex flex-col h-full w-80 border-r border-primary/20 backdrop-blur-3xl bg-surface-container-low/95 z-20">
+<div class="p-8 border-b border-primary/20 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border border-primary p-1">
+<img class="w-full h-full rounded-full object-cover" data-alt="Holographic projection of a stylized, futuristic geometric user avatar in glowing cyan lines on black background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCintG9js-Pwvaz5GhQJWlC7c-8AfqomkwMFfip6Ftn2griy0WnbfmTIoOlbr2tGM810mQknkexbXTp8ztrx9u5da3KWOoiBPONyXk40NKnBGRwYBPr-MZyg9ZaZXMiugylx1ryfMd7w0QXuVsHKpLB65ZjK7pQQE75NBMto0enNnZG0letgZUS07xgNwjY8rOIAmZJSiJr1WpWlAAMtV4_88qux2lYnwGo-x0K1p96aLgfIJzvHIB6zQ">
+</div>
+<div>
+<h2 class="text-headline-md font-headline-md text-primary">OPERATOR_01</h2>
+<p class="text-label-caps font-label-caps text-outline">STARK INDUSTRIES SECURE</p>
+<p class="text-label-caps font-label-caps text-primary/50 mt-1">V.4.2.0</p>
+</div>
+</div>
+<div class="flex-1 py-8 flex flex-col gap-2 px-4 overflow-y-auto">
+<a class="flex items-center gap-4 p-3 rounded-lg text-primary bg-primary/5 border-l-4 border-primary font-bold hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-primary">terminal</span>
+<span class="font-label-caps text-label-caps">Main Console</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-caps text-label-caps">System Intelligence</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">satellite_alt</span>
+<span class="font-label-caps text-label-caps">Comm Hub</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-label-caps text-label-caps">Security Protocols</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-label-caps text-label-caps">Neural Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative h-full overflow-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop h-16 bg-surface/10 border-b border-primary/20 backdrop-blur-xl z-20">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">hub</span>
+<h1 class="text-headline-sm font-headline-sm tracking-[0.2em] text-primary animate-pulse">JARVIS</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-data-display text-data-display text-outline hidden md:block">SYS.STATUS: ONLINE</span>
+<span class="material-symbols-outlined text-primary">sensors</span>
+</div>
+</header>
+<!-- Dashboard Canvas -->
+<div class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto relative z-10">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6 h-full min-h-[600px]">
+<!-- Left Column: Systems -->
+<div class="md:col-span-3 flex flex-col gap-6">
+<div class="glass-panel p-4 rounded-sm flex flex-col gap-4">
+<h3 class="text-label-caps font-label-caps text-primary border-b border-primary/30 pb-2">[ CORE_DIAGNOSTICS ]</h3>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between text-data-display font-data-display">
+<span class="text-outline">CPU_USAGE</span>
+<span class="text-primary-fixed">78%</span>
+</div>
+<div class="w-full h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 78%;"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between text-data-display font-data-display">
+<span class="text-outline">MEM_ALLOC</span>
+<span class="text-secondary-fixed">45%</span>
+</div>
+<div class="w-full h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-secondary" style="width: 45%;"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between text-data-display font-data-display">
+<span class="text-outline">TEMP_CORE</span>
+<span class="text-error">89°C</span>
+</div>
+<div class="w-full h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-error" style="width: 89%;"></div>
+</div>
+</div>
+</div>
+<!-- Radar Widget -->
+<div class="glass-panel p-4 flex-1 flex flex-col items-center justify-center relative overflow-hidden">
+<span class="absolute top-2 left-2 text-label-caps font-label-caps text-outline">[ PROXIMITY_SCAN ]</span>
+<div class="w-32 h-32 rounded-full border border-primary/30 relative flex items-center justify-center">
+<div class="absolute inset-0 radar-sweep"></div>
+<div class="w-24 h-24 rounded-full border border-primary/50"></div>
+<div class="w-16 h-16 rounded-full border border-primary"></div>
+<div class="w-2 h-2 rounded-full bg-error absolute top-8 left-8 animate-pulse shadow-[0_0_10px_theme('colors.error')]"></div>
+<div class="w-1 h-1 rounded-full bg-primary absolute bottom-10 right-10"></div>
+</div>
+</div>
+</div>
+<!-- Center Column: Arc Reactor -->
+<div class="md:col-span-6 flex flex-col items-center justify-center relative">
+<!-- Holographic Ring structure -->
+<div class="relative w-80 h-80 md:w-96 md:h-96 flex items-center justify-center">
+<!-- Outer dashed ring -->
+<svg class="absolute inset-0 w-full h-full animate-[spin_20s_linear_infinite]" viewBox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="48" stroke="rgba(0, 218, 243, 0.3)" stroke-dasharray="2, 4" stroke-width="0.5"></circle>
+</svg>
+<!-- Middle segmented ring -->
+<svg class="absolute inset-0 w-full h-full animate-[spin_15s_linear_infinite_reverse]" viewBox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="42" stroke="rgba(0, 218, 243, 0.5)" stroke-dasharray="10, 5, 2, 5" stroke-width="2"></circle>
+</svg>
+<!-- Inner thick ring -->
+<svg class="absolute inset-0 w-full h-full animate-[spin_10s_linear_infinite]" viewBox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="35" stroke="rgba(0, 218, 243, 0.8)" stroke-dasharray="30, 10" stroke-linecap="round" stroke-width="4"></circle>
+</svg>
+<!-- Core -->
+<div class="relative w-40 h-40 rounded-full bg-primary/10 border-4 border-primary shadow-[0_0_50px_rgba(0,218,243,0.5)] flex items-center justify-center backdrop-blur-md">
+<div class="absolute inset-0 rounded-full pulse-ring border-2 border-primary"></div>
+<div class="text-center z-10">
+<span class="block text-headline-lg font-headline-lg text-primary tracking-widest drop-shadow-[0_0_10px_theme('colors.primary')]">98%</span>
+<span class="block text-label-caps font-label-caps text-primary-fixed-dim">OUTPUT_CAPACITY</span>
+</div>
+</div>
+</div>
+<!-- Lower readouts -->
+<div class="absolute bottom-0 w-full flex justify-between px-8">
+<div class="text-left">
+<span class="block text-label-caps font-label-caps text-primary/70">LINK_ESTABLISHED</span>
+<span class="block text-data-display font-data-display text-primary">SECURE_CHANNEL_09</span>
+</div>
+<div class="text-right">
+<span class="block text-label-caps font-label-caps text-primary/70">CORE_READY</span>
+<span class="block text-data-display font-data-display text-primary">STABLE_STATE</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Data Feed -->
+<div class="md:col-span-3 flex flex-col gap-6">
+<div class="glass-panel p-4 flex flex-col h-48">
+<h3 class="text-label-caps font-label-caps text-primary border-b border-primary/30 pb-2 mb-2">[ COMM_LOG ]</h3>
+<div class="flex-1 overflow-y-auto space-y-2 text-data-display font-data-display text-outline-variant pr-2">
+<p class=""><span class="text-primary">&gt;</span> INCOMING_TRANSMISSION...</p>
+<p class=""><span class="text-primary">&gt;</span> DECRYPTING_SIGNAL...</p>
+<p class="text-primary-fixed-dim"><span class="text-primary">&gt;</span> MATCH_FOUND_STARK_SERVER</p>
+<p class=""><span class="text-primary">&gt;</span> DOWNLOADING_SCHEMATICS...</p>
+<p class=""><span class="text-primary">&gt;</span> VERIFYING_CHECKSUM...</p>
+<p class="text-error"><span class="text-primary">&gt;</span> WARNING: UNAUTHORIZED_PING</p>
+</div>
+</div>
+<div class="glass-panel p-4 flex-1">
+<h3 class="text-label-caps font-label-caps text-primary border-b border-primary/30 pb-2 mb-4">[ TARGETING_PARAMS ]</h3>
+<div class="space-y-4">
+<div>
+<label class="text-label-caps font-label-caps text-outline block mb-1">ELEVATION (RAD)</label>
+<input class="w-full bg-transparent border-0 border-b border-primary/50 text-data-display font-data-display text-primary focus:ring-0 px-0 py-1" readonly="" type="text" value="+0.4452">
+</div>
+<div>
+<label class="text-label-caps font-label-caps text-outline block mb-1">AZIMUTH (DEG)</label>
+<input class="w-full bg-transparent border-0 border-b border-primary/50 text-data-display font-data-display text-primary focus:ring-0 px-0 py-1" readonly="" type="text" value="128.90">
+</div>
+<button class="w-full mt-4 py-2 bg-gradient-to-r from-primary/20 to-secondary/20 border border-primary hover:bg-primary/30 transition-all text-label-caps font-label-caps text-primary tracking-widest relative overflow-hidden group">
+<span class="relative z-10">CALIBRATE_SENSORS</span>
+<div class="absolute inset-0 bg-primary/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 backdrop-blur-2xl border-t border-primary/30 bg-surface/20 pb-6 px-4 py-2 flex justify-around items-center" style="box-shadow: 0px 0px 20px rgba(0, 218, 243, 0.15);">
+<a class="flex flex-col items-center justify-center text-primary-container bg-primary/10 rounded-xl p-3 border border-primary/40 scale-90 duration-150" href="#">
+<span class="material-symbols-outlined text-headline-sm">dashboard</span>
+<span class="text-label-caps font-label-caps mt-1">MAIN</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-headline-sm">memory</span>
+<span class="text-label-caps font-label-caps mt-1">SYS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-headline-sm">forum</span>
+<span class="text-label-caps font-label-caps mt-1">COMM</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-headline-sm">settings_input_component</span>
+<span class="text-label-caps font-label-caps mt-1">SET</span>
+</a>
+</nav>
+</main>
+</div>
+
+
+</body></html>

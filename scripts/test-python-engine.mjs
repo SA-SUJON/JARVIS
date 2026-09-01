@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+const root = process.cwd();
+const python = process.platform === 'win32' ? 'python' : 'python3';
+const bridge = path.join(root, 'python-engine', 'bridge.py');
+const payload = JSON.stringify({ action: 'health', settings: { enabled: true, ttsEngine: 'python-edge', userName: 'SA SUJON', assistantName: 'JARVIS', inputLanguage: 'en', assistantVoice: 'en-CA-LiamNeural', apiKeys: {} } });
+const result = await new Promise((resolve, reject) => { const child = spawn(python, [bridge], { cwd: path.join(root, 'python-engine') }); let out = ''; let err = ''; child.stdout.on('data', (chunk) => { out += chunk; }); child.stderr.on('data', (chunk) => { err += chunk; }); child.on('error', reject); child.on('close', (code) => { try { resolve({ code, json: JSON.parse(out) }); } catch { reject(new Error(err || out)); } }); child.stdin.end(payload); });
+assert.equal(result.json.ok, true); assert.equal(result.json.defaults.userName, 'SA SUJON'); assert.equal(result.json.defaults.assistantName, 'JARVIS'); assert.equal(result.json.defaults.inputLanguage, 'en'); assert.equal(result.json.defaults.assistantVoice, 'en-CA-LiamNeural');
+console.log(JSON.stringify({ ok: true, python: result.json.python, packages: result.json.packages, features: result.json.features }, null, 2));

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>JARVIS Main Console</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Sora:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#5700c9",
+                        "tertiary-fixed-dim": "#d1bcff",
+                        "surface-dim": "#10141a",
+                        "tertiary-fixed": "#e9ddff",
+                        "background": "#10141a",
+                        "outline-variant": "#3b494c",
+                        "on-error": "#690005",
+                        "primary-container": "#00e5ff",
+                        "surface-container": "#1c2026",
+                        "on-secondary-fixed": "#001e30",
+                        "on-primary": "#00363d",
+                        "secondary-container": "#00affe",
+                        "on-surface-variant": "#bac9cc",
+                        "on-secondary": "#00344f",
+                        "inverse-surface": "#dfe2eb",
+                        "on-background": "#dfe2eb",
+                        "on-primary-fixed": "#001f24",
+                        "surface-container-high": "#262a31",
+                        "on-primary-fixed-variant": "#004f58",
+                        "primary-fixed": "#9cf0ff",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "primary": "#c3f5ff",
+                        "surface": "#10141a",
+                        "on-secondary-fixed-variant": "#004b70",
+                        "surface-container-low": "#181c22",
+                        "on-primary-container": "#00626e",
+                        "on-secondary-container": "#003f5f",
+                        "surface-container-highest": "#31353c",
+                        "on-tertiary": "#3c0090",
+                        "on-surface": "#dfe2eb",
+                        "surface-variant": "#31353c",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#00daf3",
+                        "on-tertiary-fixed": "#23005b",
+                        "tertiary": "#f2e9ff",
+                        "secondary-fixed-dim": "#8dcdff",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface-container-lowest": "#0a0e14",
+                        "outline": "#849396",
+                        "surface-bright": "#353940",
+                        "secondary": "#8dcdff",
+                        "secondary-fixed": "#cae6ff",
+                        "inverse-on-surface": "#2d3137",
+                        "on-tertiary-container": "#6c00f7",
+                        "tertiary-container": "#d9c8ff",
+                        "inverse-primary": "#006875"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "panel-padding": "12px",
+                        "gutter": "16px",
+                        "margin-desktop": "40px",
+                        "margin-mobile": "20px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Sora"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-display": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Sora"],
+                        "headline-lg": ["Sora"],
+                        "body-md": ["JetBrains Mono"],
+                        "body-lg": ["JetBrains Mono"],
+                        "headline-md": ["Sora"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "data-display": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0a0e14; /* surface-container-lowest */
+            overflow-x: hidden;
+        }
+
+        .scanning-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background-color: rgba(0, 229, 255, 0.1);
+            animation: scan 4s linear infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        .grid-overlay {
+            background-image: 
+                linear-gradient(rgba(59, 73, 76, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 73, 76, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+
+        .glass-panel {
+            background: rgba(28, 32, 38, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(132, 147, 150, 0.2);
+            box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+            position: relative;
+        }
+        
+        .glass-panel::before, .glass-panel::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border: 1px solid rgba(0, 229, 255, 0.5);
+            pointer-events: none;
+        }
+
+        .glass-panel::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .glass-panel::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+        .arc-glow {
+            box-shadow: 0 0 40px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="text-on-surface h-screen flex overflow-hidden">
+<!-- Z-1 HUD Layer Background -->
+<div class="fixed inset-0 grid-overlay z-0"></div>
+<div class="scanning-line"></div>
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full z-40 flex flex-col pt-20 h-screen w-64 left-0 border-r border-outline-variant/30 bg-surface-container-lowest/90 dark:bg-surface-container-lowest/90 backdrop-blur-3xl">
+<div class="px-6 mb-8">
+<div class="text-primary-fixed-dim font-label-caps text-label-caps mb-2 opacity-50">[ IDENTITY ]</div>
+<div class="font-headline-sm text-headline-sm text-primary mb-1">OPERATOR_01</div>
+<div class="font-data-display text-data-display text-secondary-fixed-dim opacity-70">LINK_STABLE_98%</div>
+</div>
+<div class="flex-1 flex flex-col space-y-2 mt-4">
+<!-- Active Tab -->
+<a class="flex items-center text-primary border-l-2 border-primary bg-primary/5 py-4 pl-6 animate-pulse transition-opacity" href="#">
+<span class="material-symbols-outlined mr-4" style="font-variation-settings: 'FILL' 1;">hub</span>
+<span class="font-label-caps text-label-caps tracking-widest uppercase">CORE</span>
+</a>
+<!-- Inactive Tabs -->
+<a class="flex items-center text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all" href="#">
+<span class="material-symbols-outlined mr-4">psychology</span>
+<span class="font-label-caps text-label-caps tracking-widest uppercase">NEURAL</span>
+</a>
+<a class="flex items-center text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all" href="#">
+<span class="material-symbols-outlined mr-4">lan</span>
+<span class="font-label-caps text-label-caps tracking-widest uppercase">NETWORK</span>
+</a>
+<a class="flex items-center text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all" href="#">
+<span class="material-symbols-outlined mr-4">verified_user</span>
+<span class="font-label-caps text-label-caps tracking-widest uppercase">SECURITY</span>
+</a>
+<a class="flex items-center text-on-surface-variant py-4 pl-6 opacity-60 hover:opacity-100 hover:bg-surface-variant/20 hover:text-primary-fixed-dim transition-all" href="#">
+<span class="material-symbols-outlined mr-4">settings</span>
+<span class="font-label-caps text-label-caps tracking-widest uppercase">SYSTEM</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-64 relative z-10 h-full overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-gutter h-16 sticky top-0 z-50 w-full top-0 border-b border-outline-variant/30 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl shadow-[0_0_15px_rgba(0,229,255,0.1)]">
+<div class="flex items-center">
+<span class="font-headline-sm text-headline-sm font-black text-primary-container dark:text-primary-container tracking-wider">AETHER_OS_v4.2</span>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex space-x-4">
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300 opacity-70 hover:opacity-100">
+<span class="material-symbols-outlined">memory</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300 opacity-70 hover:opacity-100">
+<span class="material-symbols-outlined">sensors</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all duration-300 opacity-70 hover:opacity-100">
+<span class="material-symbols-outlined">security</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 p-margin-desktop overflow-y-auto custom-scrollbar">
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-12 gap-6 h-full pb-10">
+<!-- Central Arc Reactor Visualization (Takes up significant space) -->
+<div class="col-span-12 lg:col-span-7 glass-panel p-6 flex flex-col items-center justify-center relative min-h-[500px]">
+<div class="absolute top-4 left-4 font-label-caps text-label-caps text-primary-fixed-dim opacity-70">[ PRIMARY_CORE_OUTPUT ]</div>
+<div class="absolute top-4 right-4 font-data-display text-data-display text-secondary-fixed-dim">STATUS: OPTIMAL</div>
+<!-- Arc Reactor SVG Representation -->
+<div class="relative w-80 h-80 flex items-center justify-center">
+<svg class="w-full h-full animate-[spin_60s_linear_infinite]" viewbox="0 0 100 100">
+<!-- Outer Ring -->
+<circle cx="50" cy="50" fill="none" r="48" stroke="rgba(0, 229, 255, 0.2)" stroke-width="1"></circle>
+<circle cx="50" cy="50" fill="none" r="46" stroke="rgba(0, 229, 255, 0.5)" stroke-dasharray="4 8" stroke-width="2"></circle>
+<!-- Middle Rings -->
+<circle cx="50" cy="50" fill="none" r="38" stroke="rgba(0, 175, 254, 0.3)" stroke-width="4"></circle>
+<circle class="animate-[spin_20s_linear_infinite_reverse]" cx="50" cy="50" fill="none" r="33" stroke="rgba(156, 240, 255, 0.8)" stroke-dasharray="2 4" stroke-width="1" style="transform-origin: center;"></circle>
+<!-- Inner Core -->
+<circle cx="50" cy="50" fill="none" r="25" stroke="rgba(0, 229, 255, 0.4)" stroke-width="8"></circle>
+<circle class="arc-glow" cx="50" cy="50" fill="rgba(0, 229, 255, 0.1)" r="18" stroke="rgba(0, 229, 255, 0.8)" stroke-width="2"></circle>
+</svg>
+<!-- Core Text -->
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-headline-lg text-headline-lg text-primary-container drop-shadow-[0_0_10px_rgba(0,229,255,0.8)]">98%</span>
+<span class="font-label-caps text-label-caps text-primary-fixed tracking-widest mt-1">CAPACITY</span>
+</div>
+</div>
+<!-- Data Readouts Below Arc -->
+<div class="w-full mt-12 grid grid-cols-3 gap-4 text-center">
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">TEMP</div>
+<div class="font-data-display text-data-display text-primary">34.2°C</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">VOLTAGE</div>
+<div class="font-data-display text-data-display text-primary">12.4 kV</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">STABILITY</div>
+<div class="font-data-display text-data-display text-primary">99.9%</div>
+</div>
+</div>
+</div>
+<!-- Right Side Panels -->
+<div class="col-span-12 lg:col-span-5 flex flex-col gap-6">
+<!-- Core Diagnostics -->
+<div class="glass-panel p-5 flex-1">
+<div class="flex justify-between items-center border-b border-outline-variant/30 pb-2 mb-4">
+<span class="font-label-caps text-label-caps text-primary-fixed-dim">[ DIAGNOSTICS ]</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">monitoring</span>
+</div>
+<div class="space-y-6">
+<!-- CPU -->
+<div>
+<div class="flex justify-between mb-1">
+<span class="font-data-display text-data-display text-on-surface">CPU_USAGE</span>
+<span class="font-data-display text-data-display text-secondary">42%</span>
+</div>
+<div class="h-1 w-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-secondary-container w-[42%] relative">
+<div class="absolute right-0 top-0 bottom-0 w-2 bg-white opacity-50 shadow-[0_0_5px_rgba(255,255,255,1)]"></div>
+</div>
+</div>
+</div>
+<!-- MEM -->
+<div>
+<div class="flex justify-between mb-1">
+<span class="font-data-display text-data-display text-on-surface">MEM_ALLOC</span>
+<span class="font-data-display text-data-display text-primary-container">68%</span>
+</div>
+<div class="h-1 w-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-primary-container w-[68%] relative">
+<div class="absolute right-0 top-0 bottom-0 w-2 bg-white opacity-50 shadow-[0_0_5px_rgba(255,255,255,1)]"></div>
+</div>
+</div>
+</div>
+<!-- GPU -->
+<div>
+<div class="flex justify-between mb-1">
+<span class="font-data-display text-data-display text-on-surface">GPU_LOAD</span>
+<span class="font-data-display text-data-display text-tertiary-fixed-dim">89%</span>
+</div>
+<div class="h-1 w-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-tertiary-fixed-dim w-[89%] relative">
+<div class="absolute right-0 top-0 bottom-0 w-2 bg-white opacity-50 shadow-[0_0_5px_rgba(255,255,255,1)]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Proximity Radar -->
+<div class="glass-panel p-5 flex-1 flex flex-col">
+<div class="flex justify-between items-center border-b border-outline-variant/30 pb-2 mb-4">
+<span class="font-label-caps text-label-caps text-primary-fixed-dim">[ PROXIMITY_SCAN ]</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">radar</span>
+</div>
+<div class="flex-1 relative flex items-center justify-center min-h-[200px]">
+<!-- Radar SVG -->
+<svg class="w-full h-full max-w-[200px] max-h-[200px]" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="45" stroke="rgba(132, 147, 150, 0.2)" stroke-width="1"></circle>
+<circle cx="50" cy="50" fill="none" r="30" stroke="rgba(132, 147, 150, 0.2)" stroke-width="1"></circle>
+<circle cx="50" cy="50" fill="none" r="15" stroke="rgba(132, 147, 150, 0.2)" stroke-width="1"></circle>
+<line stroke="rgba(132, 147, 150, 0.2)" stroke-width="1" x1="50" x2="50" y1="5" y2="95"></line>
+<line stroke="rgba(132, 147, 150, 0.2)" stroke-width="1" x1="5" x2="95" y1="50" y2="50"></line>
+<!-- Scanner Sweep -->
+<path class="animate-[spin_4s_linear_infinite]" d="M50,50 L50,5 A45,45 0 0,1 95,50 Z" fill="rgba(0, 229, 255, 0.1)" style="transform-origin: center;"></path>
+<!-- Blips -->
+<circle class="animate-ping" cx="70" cy="30" fill="#00e5ff" r="1.5"></circle>
+<circle cx="70" cy="30" fill="#fff" r="1"></circle>
+<circle class="animate-ping" cx="35" cy="65" fill="#00e5ff" r="1.5" style="animation-delay: 1s;"></circle>
+<circle cx="35" cy="65" fill="#fff" r="1"></circle>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>J.A.R.V.I.S. // Comm Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Sora:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#e9ddff",
+                        "secondary-container": "#00affe",
+                        "on-tertiary-fixed-variant": "#5700c9",
+                        "primary-fixed": "#9cf0ff",
+                        "on-primary-fixed": "#001f24",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#8dcdff",
+                        "tertiary-fixed-dim": "#d1bcff",
+                        "secondary": "#8dcdff",
+                        "surface-container-lowest": "#0a0e14",
+                        "surface-container": "#1c2026",
+                        "on-secondary-fixed": "#001e30",
+                        "on-tertiary-container": "#6c00f7",
+                        "tertiary": "#f2e9ff",
+                        "surface-container-high": "#262a31",
+                        "on-tertiary-fixed": "#23005b",
+                        "on-surface-variant": "#bac9cc",
+                        "tertiary-container": "#d9c8ff",
+                        "on-primary-container": "#00626e",
+                        "primary-container": "#00e5ff",
+                        "inverse-surface": "#dfe2eb",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary": "#3c0090",
+                        "error-container": "#93000a",
+                        "primary-fixed-dim": "#00daf3",
+                        "surface": "#10141a",
+                        "on-background": "#dfe2eb",
+                        "inverse-primary": "#006875",
+                        "on-secondary": "#00344f",
+                        "on-surface": "#dfe2eb",
+                        "on-primary": "#00363d",
+                        "inverse-on-surface": "#2d3137",
+                        "primary": "#c3f5ff",
+                        "surface-dim": "#10141a",
+                        "on-secondary-container": "#003f5f",
+                        "surface-container-highest": "#31353c",
+                        "surface-variant": "#31353c",
+                        "on-primary-fixed-variant": "#004f58",
+                        "outline": "#849396",
+                        "background": "#10141a",
+                        "surface-tint": "#00daf3",
+                        "surface-bright": "#353940",
+                        "secondary-fixed": "#cae6ff",
+                        "surface-container-low": "#181c22",
+                        "outline-variant": "#3b494c",
+                        "on-secondary-fixed-variant": "#004b70"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "unit": "4px",
+                        "margin-mobile": "20px",
+                        "panel-padding": "12px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Sora"],
+                        "body-lg": ["JetBrains Mono"],
+                        "body-md": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Sora"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-display": ["JetBrains Mono"],
+                        "headline-lg": ["Sora"],
+                        "headline-md": ["Sora"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "data-display": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0a0e14; /* surface-container-lowest */
+            color: #dfe2eb; /* on-surface */
+            overflow: hidden;
+        }
+
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 10;
+            position: absolute;
+            pointer-events: none;
+            background: linear-gradient(0deg, rgba(0,218,243,0) 0%, rgba(0,218,243,0.1) 50%, rgba(0,218,243,0) 100%);
+            opacity: 0.1;
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: -100px; }
+            100% { top: 100%; }
+        }
+
+        .hud-border {
+            border: 1px solid rgba(0, 218, 243, 0.2);
+            position: relative;
+        }
+
+        .hud-border::before, .hud-border::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-color: rgba(0, 218, 243, 0.6);
+            border-style: solid;
+        }
+
+        .hud-border::before {
+            top: -1px; left: -1px;
+            border-width: 2px 0 0 2px;
+        }
+
+        .hud-border::after {
+            bottom: -1px; right: -1px;
+            border-width: 0 2px 2px 0;
+        }
+
+        .glass-panel {
+            background: rgba(0, 218, 243, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .text-glow {
+            text-shadow: 0 0 8px rgba(0, 218, 243, 0.5);
+        }
+
+        /* Custom scrollbar for HUD feel */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 218, 243, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 218, 243, 0.3);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 218, 243, 0.6);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased min-h-screen flex flex-col font-body-md relative">
+<!-- Background Grid -->
+<div class="absolute inset-0 z-0 pointer-events-none" style="background-image: linear-gradient(rgba(0, 218, 243, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 218, 243, 0.05) 1px, transparent 1px); background-size: 40px 40px;"></div>
+<!-- Scanning Line -->
+<div class="scanline"></div>
+<!-- TopAppBar -->
+<header class="docked full-width top-0 backdrop-blur-xl border-b border-primary/20 bg-surface/10 dark:bg-surface/10 flex justify-between items-center w-full px-margin-mobile h-16 z-50">
+<div class="flex items-center gap-4 text-primary dark:text-primary">
+<span class="material-symbols-outlined hover:bg-primary/10 hover:text-primary p-2 rounded-full transition-transform duration-100 cursor-pointer" data-icon="hub">hub</span>
+<span class="text-headline-sm font-headline-sm tracking-[0.2em] animate-pulse">JARVIS</span>
+</div>
+<div class="text-primary dark:text-primary">
+<span class="material-symbols-outlined hover:bg-primary/10 hover:text-primary p-2 rounded-full transition-transform duration-100 cursor-pointer" data-icon="sensors">sensors</span>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative z-10 w-full h-[calc(100vh-4rem)]">
+<!-- NavigationDrawer (Web) -->
+<nav class="hidden md:flex flex-col h-full py-8 w-80 border-r border-primary/20 backdrop-blur-3xl bg-surface-container-low/95 dark:bg-surface-container-low/95">
+<div class="px-6 mb-8 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border border-primary/50 flex items-center justify-center overflow-hidden relative">
+<img alt="Agent Hologram" class="w-full h-full object-cover opacity-70" data-alt="A glowing holographic projection of a futuristic user avatar, stylized in bright cyan hues against a pitch black void, intricate digital noise artifacts, high contrast, technical HUD aesthetic, crisp cybernetic details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGkiGeswV7TBWkm-sQrLyyz2usB91zm0IZMnkLkXBCPcFsHzxUJWfFZN3uqCMjUpDkMe203ehuPj1vVaggARVLxQb-Olj8D9dd6JR9RrbtytmnuN3hfK_1XZEr4qIJw1rpa2CE1MhTc_ockKIXU0dIK2etmxeHylGv7vmAz-NAyUrhfipOwmHCuVN0FfPT3jVitZVJkcNawYTDd2v8BvX_IO8IkNeqacf2PpE5Eik6pneg5B1uvzU8Cw">
+<div class="absolute inset-0 bg-primary/20 mix-blend-overlay"></div>
+</div>
+<div>
+<div class="text-primary text-headline-sm font-headline-sm text-glow">OPERATOR_01</div>
+<div class="text-label-caps font-label-caps text-outline-variant mt-1">STARK INDUSTRIES SECURE</div>
+<div class="text-[8px] font-label-caps text-primary/50 tracking-widest mt-0.5">V.4.2.0</div>
+</div>
+</div>
+<ul class="flex flex-col gap-2 px-4">
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<span class="font-data-display text-data-display">Main Console</span>
+</a>
+</li>
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+<span class="font-data-display text-data-display">System Intelligence</span>
+</a>
+</li>
+<li class="">
+<!-- Active State -->
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-primary bg-primary/5 border-l-4 border-primary font-bold shadow-[inset_0_0_10px_rgba(0,218,243,0.1)]" href="#">
+<span class="material-symbols-outlined" data-icon="satellite_alt">satellite_alt</span>
+<span class="font-data-display text-data-display">Comm Hub</span>
+</a>
+</li>
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="font-data-display text-data-display">Security Protocols</span>
+</a>
+</li>
+<li class="">
+<a class="flex items-center gap-4 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-data-display text-data-display">Neural Settings</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col p-4 md:p-gutter gap-4 overflow-hidden relative">
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full pb-20 md:pb-0">
+<!-- Contact List / Channels -->
+<div class="hud-border glass-panel lg:col-span-3 flex flex-col h-full rounded-sm">
+<div class="p-3 border-b border-primary/20 flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-primary tracking-widest">[ ACTIVE_CHANNELS ]</span>
+<span class="material-symbols-outlined text-primary/70 text-sm" data-icon="filter_list">filter_list</span>
+</div>
+<div class="flex-1 overflow-y-auto p-2 flex flex-col gap-2">
+<!-- Contact Item Active -->
+<div class="flex items-center gap-3 p-2 border border-primary bg-primary/10 rounded-sm cursor-pointer relative overflow-hidden group">
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="w-10 h-10 rounded-full border border-primary relative flex-shrink-0">
+<div class="absolute inset-0 rounded-full border border-primary/30 animate-[spin_4s_linear_infinite] border-dashed"></div>
+<img alt="Tony Stark" class="w-full h-full rounded-full object-cover mix-blend-luminosity opacity-80" data-alt="Monochrome futuristic portrait of a man, glowing cyan eyes, embedded cybernetic neural interface on temple, dark cinematic lighting, highly detailed tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfOpssP7eUFeRoNFoJcsakt2kqH8KkfhaPSU8nwJE1P93EzTAeXXOrn_mFwEkas95fv9wB_BtyckJqjBFcOluTGg--rf-6ExhNBr69e0IR6FXsjVdSVo6GPohko5ANug1zvZ33oLD7TUGENjPHKgAkYdnycPW3f3A01Ku3qx578KUzLDQlRgIi4lowLRr5ok27lrXlr7Uu1lgAaVSAf0wA-USI0vx1XvdAAGO_l7fy9dw4gWJYQhVxGg">
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-data-display text-data-display text-primary font-bold truncate">DIR. STARK</div>
+<div class="font-label-caps text-label-caps text-primary/60 truncate mt-1">ENCRYPTED // ONLINE</div>
+</div>
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_5px_rgba(0,218,243,0.8)]"></div>
+</div>
+<!-- Contact Items Inactive -->
+<div class="flex items-center gap-3 p-2 border border-outline-variant hover:border-primary/50 hover:bg-primary/5 rounded-sm cursor-pointer transition-all">
+<div class="w-10 h-10 rounded-full border border-outline-variant relative flex-shrink-0">
+<img alt="Natasha" class="w-full h-full rounded-full object-cover mix-blend-luminosity opacity-40 grayscale" data-alt="Monochrome futuristic portrait of a woman, tech visor over eyes, dark cinematic lighting, highly detailed cyber aesthetic, muted colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0xTvaAItIX1OyDUwUq8lbA3RLBfSEBen5cA02Ko-OSCl3RCmesB3wc2mqLJBzEnge3Xd6WV3wkPXUaqp9ZGWA7HmHNzGCgtsF1yKf1egChVyiYc8bkTa0hMcmeBu_p-KipLbBdHuhm8Iby4iO6-ploSijxTbRnXbVzVxRsZxpUtXu4M32ACeBD-xCDH5nXhvWs2bruln-RcARhL8OTtJ3dVgE2Opk0In4eDbEU5fpSV5LDm0vQzHGug">
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-data-display text-data-display text-on-surface-variant truncate">AGENT_R</div>
+<div class="font-label-caps text-label-caps text-outline-variant truncate mt-1">STANDBY // IDLE</div>
+</div>
+</div>
+<div class="flex items-center gap-3 p-2 border border-outline-variant hover:border-primary/50 hover:bg-primary/5 rounded-sm cursor-pointer transition-all">
+<div class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center bg-surface-container-high flex-shrink-0">
+<span class="material-symbols-outlined text-outline-variant text-sm" data-icon="group">group</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-data-display text-data-display text-on-surface-variant truncate">AVENGERS_INITIATIVE</div>
+<div class="font-label-caps text-label-caps text-outline-variant truncate mt-1">MULTI-NODE // SECURE</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Chat Area -->
+<div class="hud-border glass-panel lg:col-span-6 flex flex-col h-full rounded-sm">
+<!-- Chat Header -->
+<div class="p-4 border-b border-primary/20 flex justify-between items-center bg-surface-container/50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="lock">lock</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-primary">DIR. STARK // COMMS_LINK</h2>
+<div class="font-label-caps text-label-caps text-primary/60 mt-1">FREQ: 144.92 MHz | ENCRYPTION: AES-256-GCM</div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="p-2 border border-primary/30 rounded text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="videocam">videocam</span>
+</button>
+<button class="p-2 border border-primary/30 rounded text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Messages -->
+<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+<!-- Incoming Message -->
+<div class="flex gap-3 max-w-[85%] self-start">
+<div class="w-8 h-8 rounded border border-primary/50 flex-shrink-0 mt-1">
+<img alt="Tony Stark" class="w-full h-full object-cover mix-blend-luminosity opacity-80" data-alt="Monochrome futuristic portrait of a man, glowing cyan eyes, embedded cybernetic neural interface on temple, dark cinematic lighting, highly detailed tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2_nnRg7_2mEwyFwyFtw2Psh9J-PcrR21bmEFI6rOaqeQ1uEgsyGWOenNu4cUU4IbO6BzRsmKO8BohYVl3Z8p0V3A9CHMCTAj235PnaAbsNzLl_Rgl7AqHAfm0LA9oRmSWc5g8ZdJlAE-ATg6eRHsMi6FlNtHItiBYjL09H3ZKkfGuEavRe_FpUy1nR4-Kst_-_NfQvl7GENrWpfbpGBzyXmVKKUkvG2H4IS1WipWg5ZgRysUXPKLcJg">
+</div>
+<div>
+<div class="flex items-baseline gap-2 mb-1">
+<span class="font-headline-sm text-[12px] text-primary tracking-wide">STARK</span>
+<span class="font-label-caps text-[8px] text-primary/50">T-MINUS 00:04:12</span>
+</div>
+<div class="border border-primary/40 bg-primary/5 rounded-sm rounded-tl-none p-3 relative">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary/50"></div>
+<p class="font-body-md text-body-md text-on-surface">J.A.R.V.I.S., I need the telemetry data on the Mark 43 thrusters immediately. We're seeing a 12% drop in efficiency on the port stabilizer.</p>
+</div>
+</div>
+</div>
+<!-- Outgoing Message -->
+<div class="flex gap-3 max-w-[85%] self-end flex-row-reverse">
+<div class="w-8 h-8 rounded border border-primary/50 flex-shrink-0 mt-1 flex items-center justify-center bg-primary/10">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="memory">memory</span>
+</div>
+<div class="flex flex-col items-end">
+<div class="flex items-baseline gap-2 mb-1 flex-row-reverse">
+<span class="font-headline-sm text-[12px] text-secondary-fixed-dim tracking-wide">J.A.R.V.I.S.</span>
+<span class="font-label-caps text-[8px] text-primary/50">T-MINUS 00:04:10</span>
+</div>
+<div class="border border-secondary-fixed-dim/40 bg-secondary-fixed-dim/5 rounded-sm rounded-tr-none p-3 relative text-right">
+<div class="absolute top-0 right-0 w-1 h-full bg-secondary-fixed-dim/50"></div>
+<p class="font-body-md text-body-md text-on-surface">Uploading telemetry now, sir. Analyzing the variance... It appears to be a micro-fracture in the primary manifold causing an uneven fuel mixture. Adjusting compensation algorithms.</p>
+</div>
+</div>
+</div>
+<!-- System Alert Message -->
+<div class="w-full flex justify-center my-4">
+<div class="border border-error/50 bg-error/5 px-4 py-1 rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-xs" data-icon="warning">warning</span>
+<span class="font-label-caps text-[10px] text-error tracking-widest">DATA PACKET INTERCEPT ATTEMPT BLOCKED</span>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-3 border-t border-primary/20 bg-surface-container/30">
+<div class="flex items-end gap-2 border border-primary/40 bg-black/50 p-1 rounded-sm focus-within:border-primary focus-within:shadow-[0_0_10px_rgba(0,218,243,0.2)] transition-all">
+<button class="p-2 text-primary/60 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+<textarea class="flex-1 bg-transparent border-none text-on-surface font-body-md text-body-md focus:ring-0 resize-none h-10 py-2 placeholder-outline-variant" placeholder="[ INPUT_COMMAND_STRING ]"></textarea>
+<button class="p-2 text-primary hover:text-primary-fixed-dim transition-colors">
+<span class="material-symbols-outlined" data-icon="send">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right Side Panel: Diagnostics & Voice -->
+<div class="lg:col-span-3 flex flex-col gap-4 h-full">
+<!-- Voice Transcript & Viz -->
+<div class="hud-border glass-panel flex-1 rounded-sm flex flex-col overflow-hidden">
+<div class="p-2 border-b border-primary/20 bg-primary/5">
+<span class="font-label-caps text-label-caps text-primary tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined text-xs animate-pulse" data-icon="mic">mic</span>
+                                [ AUDIO_ANALYSIS ]
+                            </span>
+</div>
+<div class="flex-1 flex flex-col relative p-4">
+<!-- Fake Waveform -->
+<div class="h-16 flex items-end justify-between gap-[2px] opacity-70 mb-4">
+<script>
+                                    for(let i=0; i<30; i++) {
+                                        let h = Math.random() * 100;
+                                        document.write(`<div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: ${h}%; animation: wave ${Math.random()*0.5 + 0.5}s infinite alternate;"></div>`);
+                                    }
+                                </script><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 58.718593344392986%; animation: wave 0.7019383222708568s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 24.77245413646291%; animation: wave 0.7856315013103761s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 39.27807557921577%; animation: wave 0.6080585827584202s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 9.2623563762656%; animation: wave 0.9089564494089497s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 58.235180262162245%; animation: wave 0.5983979444504752s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 62.02479873005225%; animation: wave 0.5488135881695709s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 73.39934185707084%; animation: wave 0.7453836304451077s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 69.48701253126242%; animation: wave 0.8144957351751626s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 58.415089164486986%; animation: wave 0.5160371426590226s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 79.27528147235063%; animation: wave 0.6522988109876269s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 3.316946383762376%; animation: wave 0.8732545818645311s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 59.108507409221225%; animation: wave 0.5439383848059764s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 48.43019196285344%; animation: wave 0.812045397710527s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 93.2369455918328%; animation: wave 0.6347884154161227s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 21.793286796436263%; animation: wave 0.7557284914737917s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 69.7961513820394%; animation: wave 0.7269406104254871s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 15.286978540824592%; animation: wave 0.9040119012857492s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 58.313042878624735%; animation: wave 0.9817328326343908s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 96.83442165432945%; animation: wave 0.8905073450017225s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 83.45425699755313%; animation: wave 0.5651073220358535s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 80.96347013370065%; animation: wave 0.5347823603768529s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 14.238906309820399%; animation: wave 0.6859184356956903s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 95.09517510249684%; animation: wave 0.9161556966748087s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 3.902554135526415%; animation: wave 0.612638836213026s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 15.48386791202434%; animation: wave 0.889441584210047s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 63.7731534738312%; animation: wave 0.6249523988845709s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 25.82516346794128%; animation: wave 0.6940630332731271s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 34.342332117367924%; animation: wave 0.857185574415255s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 74.47205340988255%; animation: wave 0.7384755735904635s infinite alternate;"></div><div class="flex-1 bg-primary w-1 rounded-t-sm transition-all duration-75" style="height: 86.72231522101546%; animation: wave 0.5828989533983027s infinite alternate;"></div>
+<style>
+                                    @keyframes wave { 0% { height: 10%; } 100% { height: 90%; } }
+                                </style>
+</div>
+<div class="border-t border-primary/20 pt-3 flex-1 overflow-y-auto">
+<div class="font-label-caps text-[9px] text-primary/50 mb-1">REAL-TIME TRANSCRIPT (CONFIDENCE: 98.4%)</div>
+<p class="font-body-md text-[13px] text-on-surface-variant leading-relaxed">
+<span class="text-primary font-bold">STARK:</span> "J.A.R.V.I.S., route auxiliary power to the chest repulsor. I want a focused beam, narrow aperture."
+                                    <br><br>
+<span class="text-secondary-fixed-dim font-bold">J.A.R.V.I.S.:</span> "Routing power now, sir. Warning: prolonged use at this intensity will drain secondary reserves."
+                                </p>
+</div>
+</div>
+</div>
+<!-- Quick Stats/Files -->
+<div class="hud-border glass-panel h-1/3 rounded-sm flex flex-col">
+<div class="p-2 border-b border-primary/20 flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-primary tracking-widest">[ ATTACHED_ASSETS ]</span>
+</div>
+<div class="p-3 grid grid-cols-2 gap-2 overflow-y-auto">
+<!-- File Card -->
+<div class="border border-outline-variant hover:border-primary/50 p-2 flex flex-col gap-1 cursor-pointer group bg-black/40">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="insert_chart">insert_chart</span>
+<span class="font-label-caps text-[8px] text-outline-variant group-hover:text-primary">1.2 MB</span>
+</div>
+<div class="font-data-display text-[10px] text-on-surface truncate mt-1">MK43_TELEM.dat</div>
+</div>
+<!-- File Card -->
+<div class="border border-outline-variant hover:border-primary/50 p-2 flex flex-col gap-1 cursor-pointer group bg-black/40">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="image">image</span>
+<span class="font-label-caps text-[8px] text-outline-variant group-hover:text-primary">4.5 MB</span>
+</div>
+<div class="font-data-display text-[10px] text-on-surface truncate mt-1">MANIFOLD_SCAN.png</div>
+</div>
+<!-- Action Button -->
+<button class="col-span-2 border border-primary border-dashed p-2 text-primary/70 hover:text-primary hover:bg-primary/5 flex items-center justify-center gap-2 mt-2 transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="upload">upload</span>
+<span class="font-label-caps text-label-caps">TRANSMIT DATA</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-2 pb-6 z-50 backdrop-blur-2xl border-t border-primary/30 bg-surface/20 dark:bg-surface/20" style="box-shadow: 0px 0px 20px rgba(0, 218, 243, 0.15);">
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-caps text-[8px] mt-1 hidden">DASH</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="memory">memory</span>
+<span class="font-label-caps text-[8px] mt-1 hidden">SYS</span>
+</a>
+<!-- Active Tab -->
+<a class="flex flex-col items-center justify-center text-primary-container bg-primary/10 rounded-xl p-3 border border-primary/40 scale-90 duration-150 shadow-[0_0_15px_rgba(0,218,243,0.2)]" href="#">
+<span class="material-symbols-outlined" data-icon="forum" style="font-variation-settings: &quot;FILL&quot; 1;">forum</span>
+<span class="font-label-caps text-[8px] mt-1">COMM</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-variant p-3 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span>
+<span class="font-label-caps text-[8px] mt-1 hidden">SET</span>
+</a>
+</nav>
+
+
+</body></html>
