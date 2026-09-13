@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JARVIS — Face Scan Hologram (2D) Demo</title>
+  <link rel="stylesheet" href="./face-scan-hologram.css" />
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      background: radial-gradient(ellipse at 50% 45%, #061024 0%, #02060f 60%, #01030a 100%);
+      color: #9ee8ff;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+    body.checker {
+      background:
+        linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%),
+        linear-gradient(45deg, #1a1a1a 25%, #2a2a2a 25%, #2a2a2a 75%, #1a1a1a 75%);
+      background-size: 32px 32px; background-position: 0 0, 16px 16px;
+    }
+    #face-scan { position: fixed; inset: 0; }
+    .controls {
+      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+      display: flex; gap: 10px; z-index: 10;
+    }
+    .controls button {
+      background: rgba(0, 229, 255, 0.06);
+      border: 1px solid rgba(0, 229, 255, 0.45);
+      color: #bff3ff; padding: 8px 16px; letter-spacing: 0.18em; font-size: 11px;
+      font-family: inherit; cursor: pointer; transition: background .15s, box-shadow .15s;
+    }
+    .controls button:hover { background: rgba(0, 229, 255, 0.14); box-shadow: 0 0 12px rgba(0, 229, 255, 0.25); }
+    .controls button:disabled { opacity: 0.4; cursor: default; }
+    .readout {
+      position: fixed; left: 16px; top: 14px; font-size: 10px; letter-spacing: 0.12em;
+      color: rgba(158, 232, 255, 0.6); z-index: 10; line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div id="face-scan"></div>
+
+  <div class="readout">
+    STATE <span id="r-state">IDLE</span><br />
+    FPS <span id="r-fps">--</span> · QUALITY <span id="r-q">FULL</span><br />
+    NODES <span id="r-n">--</span> · EDGES <span id="r-e">--</span> · <span id="r-size"></span>
+  </div>
+
+  <div class="controls">
+    <button id="btn-scan">[ START SCAN ]</button>
+    <button id="btn-reset">[ RESET ]</button>
+    <button id="btn-bg">[ TOGGLE BG ]</button>
+    <button id="btn-sim-smile">[ SMILE ]</button>
+    <button id="btn-sim-jaw">[ MOUTH OPEN ]</button>
+    <button id="btn-sim-hand">[ HAND GESTURE ]</button>
+  </div>
+
+  <script type="module">
+    import { mount } from './face-scan-hologram.js';
+
+    const rState = document.getElementById('r-state');
+    const btnScan = document.getElementById('btn-scan');
+
+    const faceScan = mount(document.getElementById('face-scan'), {
+      onStateChange: (next) => {
+        rState.textContent = next;
+        btnScan.disabled = next !== 'IDLE';
+      },
+    });
+
+    btnScan.addEventListener('click', () => faceScan.startScan());
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      faceScan.reset();
+      faceScan.applyTracking({ blendshapes: { jawOpen: 0, mouthSmileLeft: 0, mouthSmileRight: 0, browInnerUp: 0 }, handLandmarks: [] });
+    });
+    document.getElementById('btn-bg').addEventListener('click', () => document.body.classList.toggle('checker'));
+
+    let smiling = false;
+    document.getElementById('btn-sim-smile').addEventListener('click', () => {
+      smiling = !smiling;
+      faceScan.applyTracking({
+        blendshapes: {
+          mouthSmileLeft: smiling ? 0.95 : 0,
+          mouthSmileRight: smiling ? 0.95 : 0,
+          browInnerUp: smiling ? 0.4 : 0
+        }
+      });
+    });
+
+    let jawOpen = false;
+    document.getElementById('btn-sim-jaw').addEventListener('click', () => {
+      jawOpen = !jawOpen;
+      faceScan.applyTracking({
+        blendshapes: {
+          jawOpen: jawOpen ? 0.85 : 0
+        }
+      });
+    });
+
+    let handVisible = false;
+    document.getElementById('btn-sim-hand').addEventListener('click', () => {
+      handVisible = !handVisible;
+      if (!handVisible) {
+        faceScan.applyTracking({ handLandmarks: [] });
+        return;
+      }
+      // 21 standard normalized hand coordinates
+      const mockHand = [
+        { x: 0.75, y: 0.85, z: 0 },
+        { x: 0.70, y: 0.78, z: 0 }, { x: 0.67, y: 0.70, z: 0 }, { x: 0.65, y: 0.63, z: 0 }, { x: 0.63, y: 0.58, z: 0 },
+        { x: 0.72, y: 0.66, z: 0 }, { x: 0.70, y: 0.56, z: 0 }, { x: 0.69, y: 0.48, z: 0 }, { x: 0.68, y: 0.42, z: 0 },
+        { x: 0.76, y: 0.66, z: 0 }, { x: 0.76, y: 0.54, z: 0 }, { x: 0.76, y: 0.45, z: 0 }, { x: 0.76, y: 0.38, z: 0 },
+        { x: 0.80, y: 0.68, z: 0 }, { x: 0.81, y: 0.57, z: 0 }, { x: 0.82, y: 0.49, z: 0 }, { x: 0.82, y: 0.43, z: 0 },
+        { x: 0.84, y: 0.72, z: 0 }, { x: 0.86, y: 0.64, z: 0 }, { x: 0.87, y: 0.58, z: 0 }, { x: 0.88, y: 0.53, z: 0 }
+      ];
+      faceScan.applyTracking({ handLandmarks: [mockHand] });
+    });
+
+    const rFps = document.getElementById('r-fps'), rQ = document.getElementById('r-q');
+    const rN = document.getElementById('r-n'), rE = document.getElementById('r-e'), rSize = document.getElementById('r-size');
+    setInterval(() => {
+      const s = faceScan.getStats();
+      rFps.textContent = s.fps; rQ.textContent = s.lowQuality ? 'REDUCED' : 'FULL';
+      rN.textContent = s.nodes; rE.textContent = s.edges;
+      rSize.textContent = `${innerWidth}×${innerHeight} @${s.dpr}x`;
+    }, 500);
+
+    addEventListener('keydown', (e) => {
+      if (e.key === 's' || e.key === 'S') faceScan.startScan();
+      if (e.key === 'r' || e.key === 'R') faceScan.reset();
+    });
+
+    window.faceScan = faceScan;   // console: faceScan.destroy()
+  </script>
+</body>
+</html>

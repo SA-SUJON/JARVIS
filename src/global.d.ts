@@ -1,10 +1,10 @@
-import type { ChatMessage, ModelInfo, ProviderConfig, ProviderId } from './types';
+import type { ChatMessage, ModelInfo, ProviderConfig, ProviderId, JarvisSettings } from './types';
 
 declare global {
   interface Window {
     jarvis: {
-      getSettings: () => Promise<{ providers: ProviderConfig[]; voice: string; voiceProfile: 'natural' | 'classic' | 'deep'; language: string; wakeWord: boolean; voiceEnabled: boolean; assistantName: string; userName: string; legacyKeys: { CohereAPIKey?: string; GroqAPIKey?: string; HuggingFaceAPIKey?: string } }>;
-      setSettings: (input: { providers?: ProviderConfig[]; voice?: string; voiceProfile?: 'natural' | 'classic' | 'deep'; language?: string; wakeWord?: boolean; voiceEnabled?: boolean; assistantName?: string; userName?: string; legacyKeys?: { CohereAPIKey?: string; GroqAPIKey?: string; HuggingFaceAPIKey?: string } }) => Promise<void>;
+      getSettings: () => Promise<JarvisSettings>;
+      setSettings: (input: Partial<JarvisSettings>) => Promise<void>;
       faceProfiles: () => Promise<Array<{ id: string; displayName: string; relation: 'operator' | 'family'; greeting: string; facts: { age?: number | null; work?: string; notes?: string }; embeddings: number[][]; voiceEmbeddings: number[][]; createdAt: string; updatedAt: string }>>;
       saveFaceProfile: (profile: { id?: string; displayName: string; relation: 'operator' | 'family'; greeting?: string; facts?: { age?: number | null; work?: string; notes?: string }; embeddings: number[][]; voiceEmbeddings?: number[][] }) => Promise<any>;
       deleteFaceProfile: (id: string) => Promise<boolean>;

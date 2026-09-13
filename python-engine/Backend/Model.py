@@ -1,6 +1,7 @@
 import os
 import re
 from dotenv import dotenv_values
+from Backend.Identity import get_identity  # Cryptographic identity verification.
 
 try:
     import cohere
@@ -57,6 +58,16 @@ def _heuristic_decision(prompt: str) -> list[str]:
     lowered = prompt.strip().lower()
     if lowered in {"exit", "quit", "bye", "goodbye"}:
         return ["exit"]
+    # Identity queries — always route to general chatbot (which has hardened identity system prompt)
+    _identity_keywords = [
+        "who made you", "who created you", "who built you", "who is your creator",
+        "who is your developer", "who designed you", "who invented you",
+        "who are you", "what are you", "your creator", "your developer",
+        "your name", "what is your name", "what's your name",
+        "jarvis", "ultron project", "mark 04", "ultron_mark",
+    ]
+    if any(kw in lowered for kw in _identity_keywords):
+        return [f"general {prompt.strip()}"]
     if lowered.startswith("open "):
         return [f"open {prompt.strip()[5:]}"]
     if lowered.startswith("close "):

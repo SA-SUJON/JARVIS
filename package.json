@@ -17,6 +17,7 @@
     "test:speech": "npm run build && node scripts/test-speech-sanitizer.mjs"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@vladmandic/face-api": "^1.7.15",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.468.0",
@@ -26,14 +27,17 @@
     "systeminformation": "^5.33.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "@types/selenium-webdriver": "^4.35.6",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron": "^36.4.0",
     "electron-builder": "^26.0.12",
+    "selenium-webdriver": "^4.49.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
     "wait-on": "^8.0.1"

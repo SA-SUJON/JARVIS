@@ -1,0 +1,16 @@
+python-dotenv
+requests
+beautifulsoup4
+selenium
+webdriver-manager
+edge-tts
+pygame
+AppOpener
+keyboard
+mtranslate
+SpeechRecognition
+pyaudio
+rich
+cohere
+groq
+pillow

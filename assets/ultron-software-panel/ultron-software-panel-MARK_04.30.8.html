@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ULTRON SOFTWARE PANEL MARK_04.30.8</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg:#050912;--cyan:#4bd8ff;--cyan-soft:#1c5f78;--cyan-dim:#123141;
+    --amber:#ffb020;--green:#37ffb0;--red:#ff3b57;
+    --text:#cfe9f7;--text-dim:#5f8aa3;--border:rgba(75,216,255,0.28);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;width:100%;}
+  body{
+    background:
+      radial-gradient(ellipse at 15% -10%,rgba(255,59,87,.07),transparent 45%),
+      radial-gradient(ellipse at 100% 110%,rgba(75,216,255,.09),transparent 40%),
+      repeating-linear-gradient(0deg,rgba(75,216,255,.035) 0,rgba(75,216,255,.035) 1px,transparent 1px,transparent 42px),
+      repeating-linear-gradient(90deg,rgba(75,216,255,.035) 0,rgba(75,216,255,.035) 1px,transparent 1px,transparent 42px),
+      var(--bg);
+    color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;padding:14px 16px;
+  }
+  .stamp{position:fixed;top:8px;right:12px;font-size:10px;letter-spacing:.1em;color:var(--amber);
+    border:1px solid rgba(255,176,32,.4);padding:5px 10px;border-radius:2px;
+    background:rgba(5,9,18,.75);z-index:50;pointer-events:none;}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
+    padding:16px 20px;margin-bottom:12px;
+    background:linear-gradient(180deg,rgba(75,216,255,.06),transparent);
+    border:1px solid var(--border);
+    clip-path:polygon(0 14px,14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%);
+    flex-wrap:wrap;
+  }
+  .aiName{font-family:'Orbitron',sans-serif;font-weight:900;font-size:28px;
+    color:var(--cyan);text-shadow:0 0 18px rgba(75,216,255,.55);transition:color .3s,text-shadow .3s;}
+  .aiName.ultron-active{color:var(--red);text-shadow:0 0 18px rgba(255,59,87,.6);}
+  .subtitle{margin-top:6px;font-size:11px;color:var(--text-dim);letter-spacing:.13em;}
+  .clock{font-family:'Orbitron',sans-serif;font-size:16px;color:var(--text);}
+  .clock label{display:block;font-size:10px;color:var(--text-dim);letter-spacing:.14em;margin-bottom:4px;}
+  .headerctl{display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+  .hdrbtns{display:flex;gap:8px;}
+  .gearbtn{
+    background:transparent;border:1px solid var(--border);color:var(--text-dim);
+    font-family:'Share Tech Mono',monospace;font-size:11px;padding:5px 10px;cursor:pointer;border-radius:2px;transition:.15s;
+  }
+  .gearbtn:hover{color:var(--cyan);border-color:var(--cyan);}
+  .gearbtn.on{color:var(--bg);background:var(--cyan);border-color:var(--cyan);}
+
+  /* ---------- settings ---------- */
+  .settingspanel{
+    border:1px solid var(--border);background:rgba(8,16,30,.85);padding:16px 18px;margin-bottom:12px;
+    clip-path:polygon(0 12px,12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%);
+  }
+  .settingspanel h2{font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:.16em;color:var(--cyan);margin:0 0 4px 0;}
+  .settingspanel h3{font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:.12em;color:var(--text-dim);margin:16px 0 8px 0;}
+  .toggrp{display:flex;gap:8px;flex-wrap:wrap;}
+  .toggrp button{
+    background:transparent;border:1px solid var(--border);color:var(--text-dim);
+    font-family:'Share Tech Mono',monospace;font-size:11px;padding:6px 14px;cursor:pointer;border-radius:2px;transition:.15s;
+  }
+  .toggrp button.active{color:var(--bg);background:var(--cyan);border-color:var(--cyan);}
+  .toggrp button.active.ultron{background:var(--red);border-color:var(--red);}
+
+  /* tab panels inside settings */
+  .settabbar{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .settabbar button{
+    background:rgba(10,20,36,.5);border:1px solid var(--border);color:var(--text-dim);
+    font-family:'Share Tech Mono',monospace;font-size:10px;padding:5px 12px;cursor:pointer;border-radius:2px;transition:.15s;
+  }
+  .settabbar button.active{color:var(--bg);background:var(--cyan);border-color:var(--cyan);}
+  .settab{display:none;}
+  .settab.active{display:block;}
+  .settingsgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:10px;}
+  .settingsgrid label{font-size:10px;color:var(--text-dim);display:block;}
+  .settingsgrid input,.settingsgrid select{
+    width:100%;margin-top:4px;background:rgba(5,9,18,.7);border:1px solid var(--border);
+    color:var(--text);font-family:'Share Tech Mono',monospace;font-size:12px;padding:7px 9px;border-radius:2px;
+  }
+  .settingsgrid input::placeholder{color:var(--text-dim);opacity:.55;}
+  .settingsgrid input:focus,.settingsgrid select:focus{outline:none;border-color:var(--cyan);}
+  .settingsgrid select option{background:var(--bg);}
+  .fieldnote{font-size:9.5px;color:var(--amber);opacity:.85;margin-top:10px;border-left:2px solid var(--amber);padding-left:8px;}
+  .savebtn{
+    margin-top:14px;padding:9px 22px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);
+    font-family:'Share Tech Mono',monospace;font-size:12px;cursor:pointer;border-radius:2px;transition:.15s;
+  }
+  .savebtn:hover{background:rgba(75,216,255,.12);}
+
+  /* ---------- tabs ---------- */
+  .tabbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .tabbar button{
+    background:rgba(10,20,36,.5);border:1px solid var(--border);color:var(--text-dim);
+    font-family:'Orbitron',sans-serif;font-size:10.5px;letter-spacing:.08em;padding:9px 16px;cursor:pointer;border-radius:2px;transition:.15s;
+  }
+  .tabbar button:hover{color:var(--cyan);}
+  .tabbar button.active{color:var(--bg);background:var(--cyan);border-color:var(--cyan);}
+
+  /* ---------- main grid ---------- */
+  .maingrid{display:grid;grid-template-columns:340px 1fr 380px;gap:14px;margin-bottom:14px;}
+  .panel{
+    border:1px solid var(--border);background:rgba(8,16,30,.55);padding:14px;position:relative;overflow:hidden;
+    clip-path:polygon(0 12px,12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%);
+  }
+  .panel h2{font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:.16em;color:var(--cyan);margin:0 0 12px 0;}
+
+  .targetfield{display:flex;justify-content:space-between;font-size:11px;padding:6px 0;border-bottom:1px solid rgba(75,216,255,.08);}
+  .targetfield .k{color:var(--text-dim);}
+  .targetfield .v{color:var(--text);text-align:right;font-size:10.5px;word-break:break-all;max-width:200px;}
+  .targetfield .v.live{color:var(--cyan);}
+  .targetfield .v.masked{color:var(--amber);}
+
+  .breachbtn{
+    width:100%;margin-top:16px;padding:12px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);
+    font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:.1em;cursor:pointer;border-radius:2px;transition:.15s;
+  }
+  .breachbtn:hover{background:rgba(75,216,255,.12);}
+  .breachbtn:disabled{opacity:.4;cursor:default;}
+  .meter{margin-top:14px;font-size:10.5px;color:var(--text-dim);}
+  .meter .bar{height:5px;background:var(--cyan-dim);border-radius:2px;overflow:hidden;margin-top:5px;}
+  .meter .bar i{display:block;height:100%;background:var(--cyan);transition:width .4s;}
+  .statbadge{display:inline-block;font-size:9.5px;padding:2px 7px;border-radius:2px;margin-top:8px;}
+  .statbadge.idle{color:var(--text-dim);border:1px solid var(--border);}
+  .statbadge.running{color:var(--amber);border:1px solid rgba(255,176,32,.4);}
+  .statbadge.success{color:var(--green);border:1px solid rgba(55,255,176,.4);}
+  .statbadge.fail{color:var(--red);border:1px solid rgba(255,59,87,.4);}
+
+  .toolrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+  .toolchip{
+    font-size:9.5px;padding:3px 8px;border-radius:2px;cursor:pointer;transition:.15s;
+    border:1px solid var(--border);color:var(--text-dim);
+  }
+  .toolchip:hover{border-color:var(--cyan);color:var(--cyan);}
+  .toolchip.selected{color:var(--bg);background:var(--cyan);border-color:var(--cyan);}
+
+  /* 3D core */
+  .centerpanel{display:flex;flex-direction:column;align-items:center;text-align:center;}
+  .core-holder{position:relative;width:230px;height:230px;}
+  .core3d{position:absolute;inset:0;}
+  .core3d canvas{width:100% !important;height:100% !important;}
+  .corestatus{margin-top:8px;font-family:'Orbitron',sans-serif;font-size:14px;letter-spacing:.1em;color:var(--text-dim);}
+  .corestatus.attempting{color:var(--amber);}
+  .corestatus.fail{color:var(--red);}
+  .corestatus.success{color:var(--green);}
+  .attemptcount{margin-top:10px;font-size:11px;color:var(--text-dim);}
+  .attemptcount b{color:var(--cyan);}
+
+  /* progress ring SVG */
+  .pring{width:80px;height:80px;margin-top:12px;}
+  .pring-track{fill:none;stroke:var(--cyan-dim);stroke-width:6;}
+  .pring-fill{fill:none;stroke:var(--cyan);stroke-width:6;stroke-linecap:round;
+    filter:drop-shadow(0 0 4px rgba(75,216,255,.7));transition:stroke-dashoffset .4s;}
+  .pring-lbl{font-size:11px;fill:var(--text);font-family:'Share Tech Mono',monospace;}
+
+  /* log */
+  .logpanel .loglist{height:360px;overflow-y:auto;font-size:11px;line-height:1.55;padding-right:4px;}
+  .logpanel .loglist::-webkit-scrollbar{width:6px;}
+  .logpanel .loglist::-webkit-scrollbar-thumb{background:var(--cyan-soft);border-radius:3px;}
+  .logline{white-space:pre-wrap;word-break:break-word;margin-bottom:2px;color:var(--text-dim);}
+  .logline.attempt{color:var(--text);}
+  .logline.warn{color:var(--amber);}
+  .logline.fail{color:var(--red);}
+  .logline.success{color:var(--green);}
+
+  /* history */
+  .historypanel{grid-column:1/-1;}
+  .histtable{width:100%;border-collapse:collapse;font-size:11.5px;}
+  .histtable th{
+    text-align:left;font-family:'Orbitron',sans-serif;font-weight:500;font-size:9.5px;color:var(--text-dim);
+    letter-spacing:.1em;padding:6px 10px;border-bottom:1px solid var(--border);
+    position:sticky;top:0;background:rgba(8,16,30,.97);
+  }
+  .histtable td{padding:6px 10px;border-bottom:1px solid rgba(75,216,255,.08);}
+  .histwrap{max-height:280px;overflow-y:auto;}
+  .resbadge{font-size:9.5px;padding:2px 7px;border-radius:2px;display:inline-block;}
+  .resbadge.SUCCESS{color:var(--green);border:1px solid rgba(55,255,176,.4);}
+  .resbadge.FAILED{color:var(--red);border:1px solid rgba(255,59,87,.4);}
+
+  footer{margin-top:16px;text-align:center;font-size:10px;color:var(--text-dim);letter-spacing:.05em;}
+  @media(max-width:1100px){.maingrid{grid-template-columns:1fr;}}
+
+/* ===== v3 OVERLOAD HUD ===== */
+.overloadgrid{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:14px;margin:14px 0}
+.overpanel{min-height:250px}
+.overpanel h2{margin-bottom:10px}
+.kvgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.kv{border:1px solid rgba(75,216,255,.10);background:rgba(3,8,16,.45);padding:7px 8px;min-height:44px}
+.kv span{display:block;font-size:8px;color:var(--text-dim);letter-spacing:.08em;margin-bottom:3px}
+.kv b{font-size:10.5px;color:var(--text);font-weight:500;word-break:break-all}
+.kv.secret b{color:var(--green);text-shadow:0 0 7px rgba(55,255,176,.22)}
+.kv.warn b{color:var(--amber)}
+.metricgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.metric{padding:8px;border:1px solid rgba(75,216,255,.10);background:rgba(3,8,16,.45);text-align:center}
+.metric .num{font-family:'Orbitron',sans-serif;font-size:14px;color:var(--cyan)}
+.metric .lbl{font-size:8px;color:var(--text-dim);margin-top:3px}
+.meterline{margin-top:9px}.meterline>div:first-child{display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim)}
+.meterline .bar{height:4px;margin-top:4px;background:var(--cyan-dim);overflow:hidden}.meterline .bar i{display:block;height:100%;background:var(--cyan);width:0;transition:width .3s}
+.queue{display:grid;gap:5px;max-height:190px;overflow:auto}.qitem{display:flex;gap:8px;align-items:center;border:1px solid rgba(75,216,255,.08);padding:6px 7px;background:rgba(3,8,16,.34);font-size:9px}
+.qdot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px rgba(75,216,255,.6);flex:0 0 auto}.qitem.done .qdot{background:var(--green)}.qitem.warn .qdot{background:var(--amber)}
+.topology{position:relative;height:185px;border:1px solid rgba(75,216,255,.08);background:radial-gradient(circle at center,rgba(75,216,255,.08),transparent 55%),rgba(3,8,16,.3);overflow:hidden}
+.topology .node{position:absolute;width:42px;height:42px;border:1px solid rgba(75,216,255,.35);border-radius:50%;display:grid;place-items:center;font-size:7px;color:var(--cyan);background:rgba(5,9,18,.9);box-shadow:0 0 16px rgba(75,216,255,.12)}
+.topology .node.main{width:58px;height:58px;left:calc(50% - 29px);top:calc(50% - 29px);border-color:var(--cyan);box-shadow:0 0 26px rgba(75,216,255,.22)}
+.topology .n1{left:8%;top:18%}.topology .n2{right:8%;top:18%}.topology .n3{left:8%;bottom:15%}.topology .n4{right:8%;bottom:15%}
+.topology .trace{position:absolute;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.45;transform-origin:left center;animation:tracePulse 1.9s infinite}
+.topology .t1{left:18%;top:31%;width:29%;transform:rotate(15deg)}.topology .t2{left:52%;top:31%;width:29%;transform:rotate(-15deg)}.topology .t3{left:18%;top:67%;width:29%;transform:rotate(-15deg)}.topology .t4{left:52%;top:67%;width:29%;transform:rotate(15deg)}
+@keyframes tracePulse{0%,100%{opacity:.15}50%{opacity:.75}}
+.detailbar{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.tag{font-size:8px;padding:4px 6px;border:1px solid rgba(75,216,255,.16);background:rgba(75,216,255,.04);color:var(--text-dim)}
+.tag.hot{color:var(--green);border-color:rgba(55,255,176,.28)}
+@media(max-width:1200px){.overloadgrid{grid-template-columns:1fr 1fr}.topology{height:160px}}
+@media(max-width:800px){.overloadgrid{grid-template-columns:1fr}.kvgrid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="stamp">ULTRON SOFTWARE PANEL- ALPHA MARK_04.30.8</div>
+<div class="wrap">
+
+<header>
+  <div>
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">
+      <span class="aiName" id="aiTitle">ULTRON</span>
+    </div>
+    <div class="subtitle">TACTICAL INTRUSION ARCHITECTURE TEST</div>
+  </div>
+  <div class="headerctl">
+    <div class="clock"><label>INTERNATIONAL TIME</label><span id="realClock">--:--:--</span></div>
+    <div class="hdrbtns">
+      <button class="gearbtn" id="settingsToggle">DEBUG</button>
+      <button class="gearbtn" id="rerollBtn">REFRESH</button>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== SETTINGS PANEL ===================== -->
+<div class="settingspanel" id="settingsPanel" style="display:none;">
+  <h2>SYSTEM & TOOLS CONFIGURATION</h2>
+
+  <h3>ACTIVE OPERATOR</h3>
+  <div class="toggrp" id="operatorGrp">
+    <button data-op="JARVIS" class="active">JARVIS</button>
+    <button data-op="ULTRON">ULTRON</button>
+  </div>
+
+  <h3>TOOLS DIFF</h3>
+  <div class="toggrp" id="diffGrp">
+    <button data-diff="EASY">LOW</button>
+    <button data-diff="NORMAL" class="active">BASIC</button>
+    <button data-diff="HARD">EXTREAM</button>
+  </div>
+
+  <h3>TARGET CREDENTIALS</h3>
+  <div class="settabbar" id="settabbar">
+    <button data-stab="wifi" class="active">Wi-Fi</button>
+    <button data-stab="phone">HANDSET</button>
+    <button data-stab="computer">COMPUTER</button>
+    <button data-stab="satellite">SATALLITE</button>
+    <button data-stab="bank">BANK ACCOUNTS</button>
+    <button data-stab="software">PROGRAMS</button>
+  </div>
+
+  <!-- WiFi -->
+  <div class="settab active" data-stab="wifi">
+    <div class="settingsgrid">
+      <label>SSID<input type="text" id="c_wifi_ssid" placeholder="SUJON"></label>
+      <label>BSSID<input type="text" id="c_wifi_bssid" placeholder="AA:BB:CC:DD:EE:FF"></label>
+      <label>Password<input type="text" id="c_wifi_pass" placeholder="12345678"></label>
+      <label>WPS PIN<input type="text" id="c_wifi_wps" placeholder="12345670"></label>
+      <label>IP Address<input type="text" id="c_wifi_ip" placeholder="192.168.0.1"></label>
+      <label>ADMIN USER<input type="text" id="c_wifi_auser" placeholder="admin"></label>
+      <label>ADMIN PASS<input type="text" id="c_wifi_apass" placeholder="admin12"></label>
+      <label>Channel<input type="text" id="c_wifi_ch" placeholder="11"></label>
+      <label>Security Type
+        <select id="c_wifi_sec">
+          <option value="WPA2-PSK">WPA2-PSK</option>
+          <option value="WPA3-SAE">WPA3-SAE</option>
+          <option value="WPA2/WPA3">WPA2/WPA3 Mixed</option>
+          <option value="WPS_ENABLED">WPS Enabled</option>
+          <option value="WEP">WEP (Legacy)</option>
+          <option value="OPEN">Open (No Auth)</option>
+        </select>
+      </label>
+      <label>Attack Script
+        <select id="c_wifi_tool">
+          <option value="pixie-dust">pixie-dust (WPS Pixie)</option>
+          <option value="oneshot">oneshot (WPS OTA)</option>
+          <option value="pmkid">hcxdumptool PMKID</option>
+          <option value="dict">Aircrack Dictionary</option>
+          <option value="deauth">Aireplay Deauth + Handshake</option>
+          <option value="evil-twin">Evil Twin AP</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Phone -->
+  <div class="settab" data-stab="phone">
+    <div class="settingsgrid">
+      <label>Phone Number<input type="text" id="c_phone_num" placeholder="+8801821295207"></label>
+      <label>Device Model<input type="text" id="c_phone_model" placeholder="Galaxy S26 Ultra"></label>
+      <label>IMEI<input type="text" id="c_phone_imei" placeholder="352099001761481"></label>
+      <label>Carrier<input type="text" id="c_phone_carrier" placeholder="AT&T"></label>
+      <label>OS Version<input type="text" id="c_phone_os" placeholder="Android 16"></label>
+      <label>Attack Vector
+        <select id="c_phone_tool">
+          <option value="sim-swap">SIM Swap (Social Eng)</option>
+          <option value="ss7">SS7 Probe</option>
+          <option value="mdm">MDM Exploit</option>
+          <option value="adb">ADB Over TCP</option>
+          <option value="phishing">Spear Phish Link</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Computer -->
+  <div class="settab" data-stab="computer">
+    <div class="settingsgrid">
+      <label>Hostname<input type="text" id="c_pc_host" placeholder="DESKTOP-SUJON"></label>
+      <label>IP Address<input type="text" id="c_pc_ip" placeholder="192.168.1.50"></label>
+      <label>MAC Address<input type="text" id="c_pc_mac" placeholder="AA:BB:CC:DD:EE:FF"></label>
+      <label>OS<input type="text" id="c_pc_os" placeholder="Windows 11 Pro"></label>
+      <label>Open Ports<input type="text" id="c_pc_ports" placeholder="22,80,3389,445"></label>
+      <label>Username<input type="text" id="c_pc_user" placeholder="SUJON"></label>
+      <label>Password<input type="text" id="c_pc_pass" placeholder="3220"></label>
+      <label>Attack Script
+        <select id="c_pc_tool">
+          <option value="nmap">Nmap Port Scan</option>
+          <option value="metasploit">Metasploit Module</option>
+          <option value="hydra">Hydra SSH Brute</option>
+          <option value="smb">SMB Exploit</option>
+          <option value="rdp">RDP Brute</option>
+          <option value="payload">Reverse Shell Payload</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Satellite -->
+  <div class="settab" data-stab="satellite">
+    <div class="settingsgrid">
+      <label>Satellite Codename<input type="text" id="c_sat_id" placeholder="SAT-ALPHA-7"></label>
+      <label>Uplink Frequency (GHz)<input type="text" id="c_sat_freq" placeholder="14.25"></label>
+      <label>Ground Station IP<input type="text" id="c_sat_ip" placeholder="203.0.113.5"></label>
+      <label>Telemetry Auth Token<input type="text" id="c_sat_token" placeholder="TLM-XXXXXX"></label>
+      <label>Orbit Type
+        <select id="c_sat_orbit">
+          <option>LEO</option><option>MEO</option><option>GEO</option><option>SSO</option>
+        </select>
+      </label>
+      <label>Attack Vector
+        <select id="c_sat_tool">
+          <option value="signal-spoof">Signal Spoof</option>
+          <option value="telemetry-inject">Telemetry Inject</option>
+          <option value="ground-station">Ground Station Exploit</option>
+          <option value="frequency-jam">Frequency Jam</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Bank API -->
+  <div class="settab" data-stab="bank">
+    <div class="settingsgrid">
+      <label>Institution Name<input type="text" id="c_bank_name" placeholder="Central Bank Of Amarica"></label>
+      <label>API Base URL<input type="text" id="c_bank_api" placeholder="https://api.bankname.com"></label>
+      <label>API Key / Token<input type="text" id="c_bank_key" placeholder="Bearer XXXX (your key)"></label>
+      <label>Account Ref Label<input type="text" id="c_bank_acct" placeholder="SavingsMain (label only)"></label>
+      <label>OAuth Client ID<input type="text" id="c_bank_cid" placeholder="client_id_xxxx"></label>
+      <label>Integration Type
+        <select id="c_bank_type">
+          <option value="open-banking-api">Open Banking API</option>
+          <option value="plaid">Plaid Integration</option>
+          <option value="fintech-sdk">Fintech SDK</option>
+          <option value="scrape">Screen Scrape Bot</option>
+        </select>
+      </label>
+    </div>
+    <div class="fieldnote">These fields wire into "JARVIS" helping purposes</div>
+  </div>
+
+  <!-- Software -->
+  <div class="settab" data-stab="software">
+    <div class="settingsgrid">
+      <label>Program Name<input type="text" id="c_soft_name" placeholder="Linux"></label>
+      <label>LicenseEndpoint<input type="text" id="c_soft_ep" placeholder="license.linux.com"></label>
+      <label>API Endpoint<input type="text" id="c_soft_api" placeholder="https://api.linux.com/v1"></label>
+      <label>Auth Token<input type="text" id="c_soft_token" placeholder="sk-XXXX"></label>
+      <label>Build Code<input type="text" id="c_soft_build" placeholder="3.0.0-build-300"></label>
+      <label>Attack Script
+        <select id="c_soft_tool">
+          <option value="burp">Burp Suite Replay</option>
+          <option value="keygen">License Key Brute</option>
+          <option value="api-fuzz">API Fuzzer</option>
+          <option value="binary-patch">Binary Patch</option>
+          <option value="token-leak">Token Leak Scan</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <button class="savebtn" id="saveBtn">Input DEBUG</button>
+</div>
+
+<!-- ===================== CATEGORY TABS ===================== -->
+<div class="tabbar" id="tabBar">
+  <button data-cat="wifi" class="active">WI-FI NETWORK</button>
+  <button data-cat="phone">MOBILE DEVICE</button>
+  <button data-cat="computer">COMPUTER SYSTEM</button>
+  <button data-cat="satellite">SATELLITE UPLINK</button>
+  <button data-cat="bank">TRANSACTION</button>
+  <button data-cat="software">PROGRAMS</button>
+</div>
+
+<!-- ===================== MAIN GRID ===================== -->
+<div class="maingrid">
+
+  <!-- left: target card -->
+  <div class="panel">
+    <h2>SEQUENCE TARGET</h2>
+    <div id="targetFields"></div>
+    <div class="toolrow" id="toolRow"></div>
+    <button class="breachbtn" id="breachBtn">INITIATE BREACH SEQUENCE</button>
+    <div class="meter">
+      <div>ESTIMATED SUCCESS: <span id="chanceLbl">--%</span></div>
+      <div class="bar"><i id="chanceBar" style="width:0%"></i></div>
+    </div>
+    <span class="statbadge idle" id="statBadge">IDLE</span>
+    <div class="attemptcount" style="margin-top:8px;">ATTEMPT: <b id="attemptLbl">0 / 0</b></div>
+  </div>
+
+  <!-- center: 3D core + progress ring -->
+  <div class="panel centerpanel">
+    <div class="core-holder" id="coreHolder">
+      <div class="core3d" id="core3d"></div>
+    </div>
+    <div class="corestatus" id="coreStatusLbl">STANDBY</div>
+    <svg class="pring" viewBox="0 0 60 60">
+      <circle cx="30" cy="30" r="24" class="pring-track"></circle>
+      <circle cx="30" cy="30" r="24" class="pring-fill" id="pringFill"
+        stroke-dasharray="150.8" stroke-dashoffset="150.8"
+        transform="rotate(-90 30 30)"></circle>
+      <text x="30" y="35" text-anchor="middle" class="pring-lbl" id="pringLbl">0%</text>
+    </svg>
+  </div>
+
+  <!-- right: log -->
+  <div class="panel logpanel">
+    <h2>INTRUSION LOG</h2>
+    <div class="loglist" id="logList"></div>
+  </div>
+
+</div>
+
+
+<!-- ===== v3 OVERLOAD / ACCESS INTELLIGENCE ===== -->
+<div class="overloadgrid">
+  <div class="panel overpanel">
+    <h2>ACCESS MANIFEST</h2>
+    <div id="accessManifest" class="kvgrid"></div>
+    <div class="detailbar" id="accessTags"></div>
+  </div>
+  <div class="panel overpanel">
+    <h2>TELEMETRY MATRIX</h2>
+    <div class="metricgrid">
+      <div class="metric"><div class="num" id="mCpu">--</div><div class="lbl">CPU LOAD</div></div>
+      <div class="metric"><div class="num" id="mMem">--</div><div class="lbl">MEMORY</div></div>
+      <div class="metric"><div class="num" id="mNet">--</div><div class="lbl">TRAFFIC</div></div>
+      <div class="metric"><div class="num" id="mRisk">--</div><div class="lbl">RISK INDEX</div></div>
+      <div class="metric"><div class="num" id="mNodes">--</div><div class="lbl">ACTIVE NODES</div></div>
+      <div class="metric"><div class="num" id="mQueue">--</div><div class="lbl">QUEUE DEPTH</div></div>
+    </div>
+    <div class="meterline"><div><span>DEFENSE PRESSURE</span><b id="defensePct">--%</b></div><div class="bar"><i id="defenseBar"></i></div></div>
+    <div class="meterline"><div><span>ANOMALY SCORE</span><b id="anomalyPct">--%</b></div><div class="bar"><i id="anomalyBar"></i></div></div>
+  </div>
+  <div class="panel overpanel">
+    <h2>MISSION QUEUE</h2>
+    <div class="queue" id="missionQueue"></div>
+  </div>
+</div>
+
+<div class="panel overpanel" style="margin-bottom:14px">
+  <h2>SYNTHETIC TOPOLOGY</h2>
+  <div class="topology">
+    <div class="trace t1"></div><div class="trace t2"></div><div class="trace t3"></div><div class="trace t4"></div>
+    <div class="node main" id="topMain">CORE</div>
+    <div class="node n1">EDGE-01</div><div class="node n2">AUTH-02</div><div class="node n3">DATA-03</div><div class="node n4">CTRL-04</div>
+  </div>
+</div>
+
+<!-- ===================== HISTORY ===================== -->
+<div class="panel historypanel">
+  <h2>ATTEMPT HISTORY</h2>
+  <div class="histwrap">
+    <table class="histtable">
+      <thead><tr>
+        <th>TIME</th><th>CATEGORY</th><th>TARGET</th><th>TOOL</th>
+        <th>OPERATOR</th><th>RESULT</th><th>ATTEMPTS</th>
+      </tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  EVERY TOOL AVAILABLE HERE IS CONTROLLED AND LICENSED UNDER JARVIS MARK_04.
+</footer>
+
+</div><!-- wrap -->
+
+<script>
+(function(){
+
+  /* -------- utils -------- */
+  function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+  function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+  function fakeMAC(){const h=()=>Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase();return[h(),h(),h(),h(),h(),h()].join(':');}
+  function fakeIP(){return`192.168.${randInt(0,4)}.${randInt(2,254)}`;}
+  function maskStr(s,keep=4){if(!s||s.length<=keep)return s||"—";return "·".repeat(s.length-keep)+s.slice(-keep);}
+
+  /* -------- per-category tool suggestion maps -------- */
+  const TOOL_MAP = {
+    wifi:["pixie-dust","oneshot","pmkid","dict","deauth","evil-twin"],
+    phone:["sim-swap","ss7","mdm","adb","phishing"],
+    computer:["nmap","metasploit","hydra","smb","rdp","payload"],
+    satellite:["signal-spoof","telemetry-inject","ground-station","frequency-jam"],
+    bank:["open-banking-api","plaid","fintech-sdk","scrape"],
+    software:["burp","keygen","api-fuzz","binary-patch","token-leak"]
+  };
+
+  /* -------- fallback procedural targets -------- */
+  const WIFI_POOL=[
+    ()=>`NETGEAR${randInt(10,99)}`,()=>`TASBHI-${randInt(1000,9999)}`,
+    ()=>`XIAOMI-${randInt(100,999)}`,()=>`TP-Link_${pick(["2.4G","5G"])}_${randInt(1000,9999)}`,
+    ()=>`SHAHIN${randInt(10000,99999)}`,()=>`MD:MELON-${randInt(1000,9999)}`,
+    ()=>`BT-Hub${randInt(5,7)}-${pick(["AB12","XZ88","QR21"])}`,
+    ()=>`SKY${randInt(1000,9999)}`,()=>`Vodafone-${randInt(1000,9999)}`,
+    ()=>`ASUS_${randInt(10,99)}`,()=>`D-Link-${randInt(1000,9999)}`,
+    ()=>`GP-WiMAX-${randInt(1000,9999)}`,()=>`NASIR KHAN-${randInt(100,999)}`,
+    ()=>`Robi-Hotspot-${randInt(10,99)}`,()=>`MD :AREFIN`,
+    ()=>`Hotel_Guest_${randInt(1,9)}`,()=>`Deya Jabe na Password`,
+    ()=>`SUJON`
+  ];
+
+  const CATEGORIES = {
+    wifi:{label:"WIFI NETWORK",geo:"icosa",baseChance:0.55,
+      lines:[
+        "Scanning {ch} — capturing beacon frames...",
+        "Sending deauth to BSSID {bssid}...",
+        "Captured WPA handshake fragment — running {tool}...",
+        "Testing WPS PIN {pin} on {ssid}...",
+        "Attempting PMKID extraction from {bssid}...",
+        "Running pixie-dust attack on WPS registrar...",
+        "Dictionary pass batch {n} against {ssid}...",
+        "Checking rainbow table shard #{n}...",
+      ]},
+    phone:{label:"MOBILE DEVICE",geo:"box_phone",baseChance:0.45,
+      lines:[
+        "Probing baseband on {target}...",
+        "Testing {tool} vector against IMEI {imei}...",
+        "Emulating registration request for {num}...",
+        "Scanning exposed diagnostic port on {target}...",
+        "Attempting OTA session token replay...",
+      ]},
+    computer:{label:"COMPUTER SYSTEM",geo:"box_pc",baseChance:0.5,
+      lines:[
+        "Running nmap on {ip}:{ports}...",
+        "Testing {tool} against {host}...",
+        "Attempting privilege escalation via {ports}...",
+        "Brute-forcing user '{user}' on {ip}...",
+        "Injecting payload stub...",
+        "Testing lateral movement vector via SMB...",
+      ]},
+    satellite:{label:"SATELLITE UPLINK",geo:"sphere",baseChance:0.28,
+      lines:[
+        "Scanning uplink frequency {freq} GHz...",
+        "Attempting telemetry spoof on {id}...",
+        "Testing ephemeris injection window...",
+        "Negotiating transponder lock via {tool}...",
+        "Cross-checking ground station auth token...",
+      ]},
+    bank:{label:"BANK API",geo:"knot",baseChance:0.72,
+      lines:[
+        "Sending OAuth token request to {api}...",
+        "Testing {tool} integration for {acct}...",
+        "Validating API key scope against {bank}...",
+        "Requesting account summary via open-banking endpoint...",
+        "Checking rate-limit headers on {api}...",
+      ]},
+    software:{label:"SOFTWARE / APP",geo:"octa",baseChance:0.6,
+      lines:[
+        "Probing license server at {ep}...",
+        "Testing {tool} against {name}...",
+        "Replaying API token to {api}...",
+        "Fuzzing endpoint {api}/auth...",
+        "Cross-checking build signature #{build}...",
+      ]}
+  };
+
+  /* -------- live credential state -------- */
+  const live = {
+    wifi:{ssid:"",bssid:"",pass:"",wps:"",ip:"",ch:"",sec:"WPA2-PSK",tool:"pixie-dust"},
+    phone:{num:"",model:"",imei:"",carrier:"",os:"",tool:"sim-swap"},
+    computer:{host:"",ip:"",mac:"",os:"",ports:"",user:"",pass:"",tool:"nmap"},
+    satellite:{id:"",freq:"",ip:"",token:"",orbit:"LEO",tool:"signal-spoof"},
+    bank:{name:"",api:"",key:"",acct:"",cid:"",type:"open-banking-api"},
+    software:{name:"",ep:"",api:"",token:"",build:"",tool:"burp"}
+  };
+
+  function buildTargetFromLive(cat){
+    const L = live[cat];
+    switch(cat){
+      case "wifi": return {
+        ssid:L.ssid||pick(WIFI_POOL)(), bssid:L.bssid||fakeMAC(), pass:L.pass,
+        wps:L.wps, ip:L.ip||fakeIP(), ch:L.ch||String(randInt(1,13)), sec:L.sec, tool:L.tool
+      };
+      case "phone": return {
+        num:L.num||`+880 1${randInt(600,999)}-${String(randInt(0,9999999)).padStart(7,"0")}`,
+        model:L.model||pick(["Galaxy S25 Ultra","Pixel 9 Pro","iPhone 16","OnePlus 13"]),
+        imei:L.imei||`3520${String(randInt(0,999999999)).padStart(9,"0")}`,
+        carrier:L.carrier||pick(["Grameenphone","Robi","Banglalink","Teletalk"]),
+        os:L.os||pick(["Android 16","Android 15","iOS 18.2"]), tool:L.tool
+      };
+      case "computer": return {
+        host:L.host||`DESKTOP-${Math.random().toString(36).slice(2,6).toUpperCase()}`,
+        ip:L.ip||fakeIP(), mac:L.mac||fakeMAC(), os:L.os||pick(["Windows 11 Pro","Ubuntu 24.04","macOS Sequoia"]),
+        ports:L.ports||pick(["22,80,443","3389,445","21,22,8080"]),
+        user:L.user||"admin", pass:L.pass, tool:L.tool
+      };
+      case "satellite": return {
+        id:L.id||`SAT-${randInt(1000,9999)}`, freq:L.freq||`${(randInt(2,18)+Math.random()).toFixed(2)}`,
+        ip:L.ip||`203.0.113.${randInt(1,254)}`, token:L.token,
+        orbit:L.orbit||"LEO", tool:L.tool
+      };
+      case "bank": return {
+        name:L.name||pick(["Dutch-Bangla Bank","BRAC Bank","Islami Bank","Eastern Bank"]),
+        api:L.api||"https://api.bankname.example", key:L.key,
+        acct:L.acct||"SavingsMain", cid:L.cid, type:L.type
+      };
+      case "software": return {
+        name:L.name||`SimApp v${randInt(2,9)}.${randInt(0,9)}`,
+        ep:L.ep||"license.simapp.test", api:L.api||"https://api.simapp.test",
+        token:L.token, build:L.build||String(randInt(10000,99999)), tool:L.tool
+      };
+    }
+  }
+
+  function fillLine(tpl, t, cat){
+    return tpl
+      .replace("{ssid}", t.ssid||t.name||t.host||t.id||"TARGET")
+      .replace("{bssid}", t.bssid||t.mac||"??:??:??:??:??:??")
+      .replace("{ch}", "CH"+(t.ch||"6"))
+      .replace("{pin}", t.wps||pick(["12345670","87654321","00000000","99999999"]))
+      .replace("{tool}", (t.tool||"SCRIPT"))
+      .replace("{n}", String(randInt(1,40)))
+      .replace("{target}", t.model||t.host||"TARGET")
+      .replace("{imei}", t.imei||"???")
+      .replace("{num}", t.num||"???")
+      .replace("{ip}", t.ip||"?.?.?.?")
+      .replace("{ports}", t.ports||"???")
+      .replace("{host}", t.host||"TARGET")
+      .replace("{user}", t.user||"admin")
+      .replace("{freq}", t.freq||"?.??")
+      .replace("{id}", t.id||"SAT-???")
+      .replace("{api}", t.api||"https://api.target")
+      .replace("{acct}", t.acct||"ACCT")
+      .replace("{bank}", t.name||"BANK")
+      .replace("{ep}", t.ep||"license.target")
+      .replace("{build}", t.build||"?????")
+      .replace("{name}", t.name||"APP");
+  }
+
+  /* -------- state -------- */
+  let currentCategory = "wifi";
+  let currentTarget = null;
+  let operator = "JARVIS";
+  let difficulty = "NORMAL";
+  let attackState = "idle";
+  let attempt = 0, maxAttempts = 0, breachChance = 0;
+  let seq = 0;
+  let activeTool = "";
+
+  function operatorPrefix(){return operator==="ULTRON"?"ULTRON >>":"JARVIS >>";}
+
+  /* -------- settings panel wiring -------- */
+  const settingsPanel = document.getElementById("settingsPanel");
+  const settingsToggle = document.getElementById("settingsToggle");
+  settingsToggle.addEventListener("click",()=>{
+    const open = settingsPanel.style.display!=="none";
+    settingsPanel.style.display = open?"none":"block";
+    settingsToggle.classList.toggle("on",!open);
+  });
+
+  // operator
+  document.querySelectorAll("#operatorGrp button").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelectorAll("#operatorGrp button").forEach(b=>b.classList.remove("active","ultron"));
+      btn.classList.add("active");
+      operator = btn.dataset.op;
+      const title = document.getElementById("aiTitle");
+      if(operator==="ULTRON"){btn.classList.add("ultron");title.textContent="ULTRON";title.classList.add("ultron-active");}
+      else{title.textContent="JARVIS";title.classList.remove("ultron-active");}
+    });
+  });
+
+  // difficulty
+  document.querySelectorAll("#diffGrp button").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelectorAll("#diffGrp button").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active"); difficulty=btn.dataset.diff; updateChanceDisplay();
+    });
+  });
+
+  // settings sub-tabs
+  document.querySelectorAll("#settabbar button").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelectorAll("#settabbar button").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".settab").forEach(t=>t.classList.remove("active"));
+      document.querySelector(`.settab[data-stab="${btn.dataset.stab}"]`).classList.add("active");
+    });
+  });
+
+  // save button — reads all inputs into live object
+  document.getElementById("saveBtn").addEventListener("click",()=>{
+    live.wifi.ssid = document.getElementById("c_wifi_ssid").value.trim();
+    live.wifi.bssid= document.getElementById("c_wifi_bssid").value.trim();
+    live.wifi.pass = document.getElementById("c_wifi_pass").value.trim();
+    live.wifi.wps  = document.getElementById("c_wifi_wps").value.trim();
+    live.wifi.ip   = document.getElementById("c_wifi_ip").value.trim();
+    live.wifi.ch   = document.getElementById("c_wifi_ch").value.trim();
+    live.wifi.sec  = document.getElementById("c_wifi_sec").value;
+    live.wifi.tool = document.getElementById("c_wifi_tool").value;
+
+    live.phone.num     = document.getElementById("c_phone_num").value.trim();
+    live.phone.model   = document.getElementById("c_phone_model").value.trim();
+    live.phone.imei    = document.getElementById("c_phone_imei").value.trim();
+    live.phone.carrier = document.getElementById("c_phone_carrier").value.trim();
+    live.phone.os      = document.getElementById("c_phone_os").value.trim();
+    live.phone.tool    = document.getElementById("c_phone_tool").value;
+
+    live.computer.host  = document.getElementById("c_pc_host").value.trim();
+    live.computer.ip    = document.getElementById("c_pc_ip").value.trim();
+    live.computer.mac   = document.getElementById("c_pc_mac").value.trim();
+    live.computer.os    = document.getElementById("c_pc_os").value.trim();
+    live.computer.ports = document.getElementById("c_pc_ports").value.trim();
+    live.computer.user  = document.getElementById("c_pc_user").value.trim();
+    live.computer.pass  = document.getElementById("c_pc_pass").value.trim();
+    live.computer.tool  = document.getElementById("c_pc_tool").value;
+
+    live.satellite.id    = document.getElementById("c_sat_id").value.trim();
+    live.satellite.freq  = document.getElementById("c_sat_freq").value.trim();
+    live.satellite.ip    = document.getElementById("c_sat_ip").value.trim();
+    live.satellite.token = document.getElementById("c_sat_token").value.trim();
+    live.satellite.orbit = document.getElementById("c_sat_orbit").value;
+    live.satellite.tool  = document.getElementById("c_sat_tool").value;
+
+    live.bank.name = document.getElementById("c_bank_name").value.trim();
+    live.bank.api  = document.getElementById("c_bank_api").value.trim();
+    live.bank.key  = document.getElementById("c_bank_key").value.trim();
+    live.bank.acct = document.getElementById("c_bank_acct").value.trim();
+    live.bank.cid  = document.getElementById("c_bank_cid").value.trim();
+    live.bank.type = document.getElementById("c_bank_type").value;
+
+    live.software.name  = document.getElementById("c_soft_name").value.trim();
+    live.software.ep    = document.getElementById("c_soft_ep").value.trim();
+    live.software.api   = document.getElementById("c_soft_api").value.trim();
+    live.software.token = document.getElementById("c_soft_token").value.trim();
+    live.software.build = document.getElementById("c_soft_build").value.trim();
+    live.software.tool  = document.getElementById("c_soft_tool").value;
+
+    rerollTarget();
+    settingsPanel.style.display="none";
+    settingsToggle.classList.remove("on");
+    pushLog(`${operatorPrefix()} Config saved — target reloaded with live credentials.`,"attempt");
+  });
+
+  /* -------- category tabs -------- */
+  document.getElementById("tabBar").addEventListener("click",e=>{
+    const btn=e.target.closest("button[data-cat]"); if(!btn)return;
+    document.querySelectorAll("#tabBar button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    currentCategory=btn.dataset.cat;
+    rerollTarget();
+  });
+
+  document.getElementById("rerollBtn").addEventListener("click",rerollTarget);
+
+  /* -------- render target card -------- */
+  function renderTargetCard(t, cat){
+    const rows = {
+      wifi:[
+        ["SSID", t.ssid, true],
+        ["BSSID / MAC", t.bssid],
+        ["SECURITY", t.sec],
+        ["CHANNEL", t.ch],
+        ["IP", t.ip],
+        ["WPS PIN", t.wps ? maskStr(t.wps,2) : "—", false, t.wps?"masked":""],
+        ["PASSWORD", t.pass ? maskStr(t.pass,3) : "—", false, t.pass?"masked":""],
+      ],
+      phone:[
+        ["NUMBER", t.num, true],
+        ["MODEL", t.model],
+        ["IMEI", maskStr(t.imei,4),,t.imei?"masked":""],
+        ["CARRIER", t.carrier],
+        ["OS", t.os],
+      ],
+      computer:[
+        ["HOSTNAME", t.host, true],
+        ["IP", t.ip],
+        ["MAC", t.mac],
+        ["OS", t.os],
+        ["OPEN PORTS", t.ports],
+        ["USER", t.user],
+        ["PASS", t.pass ? maskStr(t.pass,2) : "—", false, t.pass?"masked":""],
+      ],
+      satellite:[
+        ["SAT ID", t.id, true],
+        ["UPLINK FREQ", t.freq+" GHz"],
+        ["GROUND IP", t.ip],
+        ["ORBIT", t.orbit],
+        ["AUTH TOKEN", t.token ? maskStr(t.token,4) : "—", false, t.token?"masked":""],
+      ],
+      bank:[
+        ["INSTITUTION", t.name, true],
+        ["API BASE", t.api],
+        ["ACCOUNT REF", t.acct],
+        ["API KEY", t.key ? maskStr(t.key,6) : "—", false, t.key?"masked":""],
+        ["CLIENT ID", t.cid ? maskStr(t.cid,5) : "—", false, t.cid?"masked":""],
+        ["TYPE", t.type],
+      ],
+      software:[
+        ["APPLICATION", t.name, true],
+        ["LICENSE EP", t.ep],
+        ["API ENDPOINT", t.api],
+        ["AUTH TOKEN", t.token ? maskStr(t.token,6) : "—", false, t.token?"masked":""],
+        ["BUILD", t.build],
+      ]
+    };
+    const el = document.getElementById("targetFields");
+    el.innerHTML = (rows[cat]||[]).map(([k,v,,cls])=>`
+      <div class="targetfield">
+        <span class="k">${k}</span>
+        <span class="v${cls==="masked"?" masked":cls==="live"?" live":""}">${v||"—"}</span>
+      </div>`).join("");
+  }
+
+  function renderToolRow(cat){
+    const toolRow = document.getElementById("toolRow");
+    toolRow.innerHTML = "";
+    (TOOL_MAP[cat]||[]).forEach(tool=>{
+      const chip = document.createElement("div");
+      chip.className = "toolchip" + (tool===live[cat].tool?" selected":"");
+      chip.textContent = tool;
+      chip.addEventListener("click",()=>{
+        live[cat].tool = tool;
+        currentTarget.tool = tool;
+        document.querySelectorAll(".toolchip").forEach(c=>c.classList.remove("selected"));
+        chip.classList.add("selected");
+        updateChanceDisplay();
+        pushLog(`${operatorPrefix()} Attack script switched to: ${tool}`,"attempt");
+      });
+      toolRow.appendChild(chip);
+    });
+  }
+
+  function rerollTarget(){
+    seq++;
+    currentTarget = buildTargetFromLive(currentCategory);
+    activeTool = currentTarget.tool || (TOOL_MAP[currentCategory]||["auto"])[0];
+    renderTargetCard(currentTarget, currentCategory);
+    renderToolRow(currentCategory);
+    setCoreGeometry(currentCategory);
+    setCoreState("idle");
+    attackState="idle";
+    attempt=0; maxAttempts=0;
+    document.getElementById("attemptLbl").textContent="0 / 0";
+    setPring(0);
+    setStatBadge("idle");
+    updateChanceDisplay();
+    document.getElementById("breachBtn").disabled=false;
+    document.getElementById("breachBtn").textContent="INITIATE BREACH SEQUENCE";
+  }
+
+  function updateChanceDisplay(){
+    const diffMult={EASY:1.35,NORMAL:1,HARD:0.6}[difficulty];
+    const chance=Math.min(0.95,CATEGORIES[currentCategory].baseChance*diffMult);
+    document.getElementById("chanceLbl").textContent=Math.round(chance*100)+"%";
+    document.getElementById("chanceBar").style.width=(chance*100)+"%";
+  }
+
+  /* -------- log console -------- */
+  const logList = document.getElementById("logList");
+  function pushLog(text,cls){
+    const div=document.createElement("div");
+    div.className="logline "+(cls||"");
+    div.textContent=text;
+    logList.appendChild(div);
+    while(logList.children.length>200)logList.removeChild(logList.firstChild);
+    logList.scrollTop=logList.scrollHeight;
+  }
+
+  /* -------- history table -------- */
+  const histBody = document.getElementById("histBody");
+  function addHistory(catLabel,targetName,tool,op,result,att){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${new Date().toLocaleTimeString()}</td><td>${catLabel}</td>
+      <td>${targetName}</td><td>${tool}</td><td>${op}</td>
+      <td><span class="resbadge ${result}">${result}</span></td><td>${att}</td>`;
+    histBody.insertBefore(tr,histBody.firstChild);
+    while(histBody.children.length>60)histBody.removeChild(histBody.lastChild);
+  }
+
+  /* -------- progress ring -------- */
+  const PRING_CIRC=2*Math.PI*24;
+  function setPring(pct){
+    const offset=PRING_CIRC*(1-pct/100);
+    document.getElementById("pringFill").setAttribute("stroke-dashoffset",offset.toFixed(2));
+    document.getElementById("pringLbl").textContent=Math.round(pct)+"%";
+  }
+
+  /* -------- status badge -------- */
+  function setStatBadge(state){
+    const el=document.getElementById("statBadge");
+    el.className="statbadge "+state;
+    const labels={idle:"IDLE",running:"RUNNING",success:"ACCESS GRANTED",fail:"FAILED"};
+    el.textContent=labels[state]||"IDLE";
+  }
+
+  /* -------- 3D core -------- */
+  let renderer3d=null,scene3d=null,camera3d=null,core3d_m=null,ring3d_m=null;
+
+  function buildGeo(kind){
+    switch(kind){
+      case "box_phone": return new THREE.BoxGeometry(1.1,2.1,0.24,2,2,2);
+      case "box_pc":    return new THREE.BoxGeometry(2.0,1.3,1.3,2,2,2);
+      case "sphere":    return new THREE.SphereGeometry(1.05,14,10);
+      case "knot":      return new THREE.TorusKnotGeometry(0.85,0.26,90,10);
+      case "octa":      return new THREE.OctahedronGeometry(1.3,1);
+      default:          return new THREE.IcosahedronGeometry(1.3,1);
+    }
+  }
+  function init3D(){
+    try{
+      if(typeof THREE==="undefined")return false;
+      const holder=document.getElementById("core3d");
+      const w=holder.clientWidth||230,h=holder.clientHeight||230;
+      scene3d=new THREE.Scene();
+      camera3d=new THREE.PerspectiveCamera(45,w/h,0.1,1000);
+      camera3d.position.z=5.4;
+      renderer3d=new THREE.WebGLRenderer({alpha:true,antialias:true});
+      renderer3d.setSize(w,h);renderer3d.setClearColor(0x000000,0);
+      holder.appendChild(renderer3d.domElement);
+      const mat=new THREE.MeshBasicMaterial({color:0x4bd8ff,wireframe:true,transparent:true,opacity:0.85});
+      core3d_m=new THREE.Mesh(buildGeo("icosa"),mat);
+      scene3d.add(core3d_m);
+      const ringMat=new THREE.MeshBasicMaterial({color:0x4bd8ff,transparent:true,opacity:0.5});
+      ring3d_m=new THREE.Mesh(new THREE.TorusGeometry(2.1,0.012,8,100),ringMat);
+      ring3d_m.rotation.x=Math.PI/2.4;
+      scene3d.add(ring3d_m);
+      return true;
+    }catch(e){return false;}
+  }
+  function setCoreGeometry(cat){
+    if(!core3d_m)return;
+    core3d_m.geometry.dispose();
+    core3d_m.geometry=buildGeo(CATEGORIES[cat].geo);
+  }
+  function setCoreState(state){
+    const cols={idle:0x4bd8ff,attempting:0xffb020,warn:0xff3b57,fail:0xff3b57,success:0x37ffb0};
+    const labels={idle:"STANDBY",attempting:"BREACH ACTIVE",warn:"COUNTERMEASURE",fail:"ACCESS DENIED",success:"ACCESS GRANTED"};
+    if(core3d_m)core3d_m.material.color.setHex(cols[state]||0x4bd8ff);
+    if(ring3d_m)ring3d_m.material.color.setHex(cols[state]||0x4bd8ff);
+    const el=document.getElementById("coreStatusLbl");
+    el.textContent=labels[state]||"STANDBY";
+    el.className="corestatus "+(state==="attempting"||state==="warn"?"attempting":state);
+    if(core3d_m){core3d_m.scale.set(1.15,1.15,1.15);setTimeout(()=>{if(core3d_m)core3d_m.scale.set(1,1,1);},200);}
+  }
+  function render3D(){
+    if(renderer3d){
+      core3d_m.rotation.y+=0.006;core3d_m.rotation.x+=0.002;
+      ring3d_m.rotation.z+=0.003;
+      renderer3d.render(scene3d,camera3d);
+    }
+    requestAnimationFrame(render3D);
+  }
+  init3D();requestAnimationFrame(render3D);
+
+  /* -------- attack sequence -------- */
+  const breachBtn=document.getElementById("breachBtn");
+  breachBtn.addEventListener("click",startAttack);
+
+  function startAttack(){
+    if(attackState==="running")return;
+    seq++;const mySeq=seq;
+    attempt=0;
+    const diffMult={EASY:1.35,NORMAL:1,HARD:0.6}[difficulty];
+    maxAttempts=randInt(5,12);
+    breachChance=Math.min(0.95,CATEGORIES[currentCategory].baseChance*diffMult);
+    attackState="running";
+    setStatBadge("running");
+    breachBtn.disabled=true;
+    breachBtn.textContent="SEQUENCE RUNNING...";
+    document.getElementById("attemptLbl").textContent=`0 / ${maxAttempts}`;
+    const t=currentTarget; const cat=CATEGORIES[currentCategory];
+    pushLog(`${operatorPrefix()} Breach sequence initiated — target: "${getTargetName()}"  tool: ${t.tool||"auto"}`,"attempt");
+    setCoreState("attempting");
+    setTimeout(()=>runAttempt(mySeq),700);
+  }
+
+  function getTargetName(){
+    const t=currentTarget;
+    return t.ssid||t.num||t.host||t.id||t.name||"TARGET";
+  }
+
+  function runAttempt(mySeq){
+    if(mySeq!==seq||attackState!=="running")return;
+    attempt++;
+    const pct=Math.round((attempt/maxAttempts)*100);
+    setPring(pct);
+    document.getElementById("attemptLbl").textContent=`${attempt} / ${maxAttempts}`;
+    const lines=CATEGORIES[currentCategory].lines;
+    const raw=pick(lines);
+    const line=fillLine(raw,currentTarget,currentCategory);
+    pushLog(`${operatorPrefix()} [${attempt}/${maxAttempts}] ${line}`,"attempt");
+    setCoreState("attempting");
+
+    setTimeout(()=>{
+      if(mySeq!==seq)return;
+      // random countermeasure
+      if(Math.random()<0.13){
+        pushLog(`:: COUNTERMEASURE :: IDS signature triggered — rotating vector...`,"warn");
+        setCoreState("warn");
+      }
+      // random noise log
+      if(Math.random()<0.4){
+        const noises=[
+          `:: MONITOR :: channel noise ${randInt(1,99)} dBm`,
+          `:: PROBE :: scanning port ${pick(["22","80","443","8080","3389"])}...`,
+          `:: HASH :: computed ${randInt(10000,99999)} PMK candidates`,
+          `:: RETRY :: timeout — reinjecting...`,
+          `:: SCAN :: found ${randInt(1,6)} additional targets in range`,
+        ];
+        pushLog(pick(noises),"");
+      }
+      const perChance=Math.min(0.88,(breachChance/maxAttempts)*1.8);
+      const forceFinal=attempt>=maxAttempts;
+      const win=Math.random()<perChance||(forceFinal&&Math.random()<breachChance*0.8);
+      if(win){
+        pushLog(`${operatorPrefix()} :: ACCESS_GRANTED :: breach complete after ${attempt} attempt(s) — tool: ${currentTarget.tool||"auto"}`,"success");
+        setCoreState("success");setPring(100);setStatBadge("success");
+        finalize(true);return;
+      }
+      pushLog(`:: RESULT :: FAILED (attempt ${attempt})`,"fail");
+      setCoreState("fail");
+      if(attempt>=maxAttempts){
+        pushLog(`${operatorPrefix()} :: BREACH_ABORTED :: max attempts exhausted — target hardened`,"fail");
+        setStatBadge("fail");finalize(false);return;
+      }
+      const delay=500+Math.random()*600;
+      setTimeout(()=>runAttempt(mySeq),delay);
+    },800+Math.random()*600);
+  }
+
+  function finalize(success){
+    attackState=success?"success":"failed";
+    breachBtn.disabled=false;
+    breachBtn.textContent="RE-INITIATE BREACH SEQUENCE";
+    addHistory(CATEGORIES[currentCategory].label,getTargetName(),currentTarget.tool||"auto",operator,success?"SUCCESS":"FAILED",`${attempt}/${maxAttempts}`);
+  }
+
+  /* -------- clock -------- */
+  setInterval(()=>{document.getElementById("realClock").textContent=new Date().toLocaleTimeString();},1000);
+
+  /* -------- init -------- */
+  updateChanceDisplay();rerollTarget();
+  pushLog(`${operatorPrefix()} Simulation online. Configure targets in ⚙ CONFIG, then INITIATE BREACH.`,"attempt");
+
+
+
+/* ===== JARVIS SIM v2.0 FEATURE EXPANSION ===== */
+(function(){
+  const ADDONS={
+    cloud:{label:'CLOUD MESH',geo:'cloud',baseChance:.52,tool:'token-orbit',lines:['Mapping synthetic cloud topology...','Correlating identity mesh nodes...','Testing simulated containment boundaries...','Replaying configuration-drift scenario...','Running multi-node trust analysis...'],target:()=>({name:['ATLAS-GRID','ORION-MESH','NEXUS-7'][Math.floor(Math.random()*3)],region:['ap-southeast-1','eu-west-1','us-east-1'][Math.floor(Math.random()*3)],cp:'CP-'+randInt(10,99),tenant:['SIM-LAB','LAB-BLUE','RESEARCH-NODE'][Math.floor(Math.random()*3)]})},
+    iot:{label:'IOT SWARM',geo:'swarm',baseChance:.47,tool:'firmware-drift',lines:['Enumerating synthetic device swarm...','Comparing firmware lineage...','Modeling gateway trust relationships...','Injecting synthetic sensor anomalies...','Testing quarantine propagation...'],target:()=>({name:['AURORA-EDGE','SENTINEL-SWARM','HOME-NODE-DELTA'][Math.floor(Math.random()*3)],gateway:'GW-'+randInt(100,999),fw:'v'+randInt(5,9)+'.'+randInt(0,9)+'.'+randInt(0,9)+'-sim',count:randInt(24,240)})},
+    ai:{label:'AI CORE',geo:'ai',baseChance:.58,tool:'guardrail-stress',lines:['Profiling synthetic model telemetry...','Stress-testing context boundaries...','Replaying prompt-confusion scenarios...','Evaluating guardrail response envelope...','Tracking agent-loop convergence...'],target:()=>({name:['HELIOS-12B','ATLAS-NN','ORACLE-X'][Math.floor(Math.random()*3)],ver:'R'+randInt(2,9)+'.'+randInt(0,9),node:'GPU-SIM-'+randInt(1,9),ctx:['32K','64K','128K'][Math.floor(Math.random()*3)]})},
+    vehicle:{label:'VEHICLE BUS',geo:'vehicle',baseChance:.34,tool:'safety-interlock',lines:['Mapping synthetic control-domain topology...','Comparing ECU shadow states...','Replaying synthetic telemetry...','Testing safety interlock timing...','Running diagnostic containment drill...'],target:()=>({name:['RAVEN-X','NIGHTHAWK','PHOENIX-EV'][Math.floor(Math.random()*3)],bus:['BODY-CTRL','POWERTRAIN','SAFETY-MESH'][Math.floor(Math.random()*3)],fw:'SIM-'+randInt(1,4)+'.'+randInt(0,9),tid:'TEL-'+randInt(1000,9999)})}
+  };
+  Object.keys(ADDONS).forEach(cat=>{CATEGORIES[cat]=ADDONS[cat];TOOL_MAP[cat]=({cloud:['token-orbit','control-plane','identity-mesh','containment-escape','config-drift'],iot:['firmware-drift','mesh-desync','sensor-spoof','gateway-lock','device-quarantine'],ai:['context-poison','prompt-confusion','guardrail-stress','model-drift','agent-loop'],vehicle:['bus-arbitration','ecu-shadow','telemetry-replay','safety-interlock','diagnostic-lock']})[cat];live[cat]={tool:ADDONS[cat].tool};});
+
+  const tabBar=document.getElementById('tabBar');
+  Object.keys(ADDONS).forEach(cat=>{const b=document.createElement('button');b.dataset.cat=cat;b.textContent=ADDONS[cat].label;tabBar.appendChild(b);});
+
+  const originalBuild=buildTargetFromLive;
+  buildTargetFromLive=function(cat){if(!ADDONS[cat])return originalBuild(cat);return Object.assign({tool:live[cat].tool||ADDONS[cat].tool},ADDONS[cat].target());};
+  const originalRender=renderTargetCard;
+  renderTargetCard=function(t,cat){
+    if(!ADDONS[cat])return originalRender(t,cat);
+    const rows=cat==='cloud'?[['CLUSTER',t.name,true],['REGION',t.region],['CONTROL PLANE',t.cp],['TENANT',t.tenant],['SCENARIO',t.tool]]:cat==='iot'?[['SWARM',t.name,true],['GATEWAY',t.gateway],['FIRMWARE',t.fw],['DEVICES',t.count],['SCENARIO',t.tool]]:cat==='ai'?[['MODEL',t.name,true],['VERSION',t.ver],['INFERENCE NODE',t.node],['CONTEXT',t.ctx],['SCENARIO',t.tool]]:[['VEHICLE',t.name,true],['CONTROL DOMAIN',t.bus],['FIRMWARE',t.fw],['TELEMETRY ID',t.tid],['SCENARIO',t.tool]];
+    document.getElementById('targetFields').innerHTML=rows.map(([k,v,,cls])=>`<div class="targetfield"><span class="k">${k}</span><span class="v${cls==='live'?' live':''}">${v||'—'}</span></div>`).join('');
+  };
+
+  // Richer 3D environment layered over the existing Three.js core.
+  if(renderer3d&&scene3d){
+    const fx=new THREE.Group(); scene3d.add(fx);
+    const orbitSpecs=[[2.0,.012,.25],[1.7,.009,-.55],[1.42,.007,.75]];
+    orbitSpecs.forEach(([r,th,rx],i)=>{const m=new THREE.Mesh(new THREE.TorusGeometry(r,th,7,128),new THREE.MeshBasicMaterial({color:0x4bd8ff,transparent:true,opacity:.2+i*.08}));m.rotation.set(rx,0,i*.7);fx.add(m);});
+    const pts=[];for(let i=0;i<500;i++){const r=THREE.MathUtils.randFloat(2.2,4.2),a=Math.random()*Math.PI*2;pts.push(Math.cos(a)*r,Math.sin(a)*r*.62,THREE.MathUtils.randFloatSpread(3.6));}
+    const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));const stars=new THREE.Points(pg,new THREE.PointsMaterial({color:0x4bd8ff,size:.018,transparent:true,opacity:.72}));fx.add(stars);
+    const rings=new THREE.Group();[1.5,1.82,2.4].forEach((r,i)=>{const q=new THREE.Mesh(new THREE.RingGeometry(r,r+.009,72),new THREE.MeshBasicMaterial({color:0x4bd8ff,transparent:true,opacity:.10+i*.06,side:THREE.DoubleSide}));q.rotation.x=Math.PI/2;rings.add(q);});fx.add(rings);
+    const glow=new THREE.Mesh(new THREE.SphereGeometry(.72,24,16),new THREE.MeshBasicMaterial({color:0x4bd8ff,transparent:true,opacity:.065}));fx.add(glow);
+    const baseLoop=render3D;
+    render3D=function(){const tt=performance.now()*.001;fx.rotation.y+=.0015;stars.rotation.y=tt*.018;stars.rotation.x=Math.sin(tt*.2)*.08;rings.rotation.z-=.0016;glow.scale.setScalar(1+Math.sin(tt*3.1)*.09);baseLoop();};
+  }
+
+  // Advanced simulation HUD: phases + telemetry.
+  const cp=document.getElementById('coreHolder');
+  if(cp){const hud=document.createElement('div');hud.style.cssText='position:absolute;left:12px;right:12px;bottom:-2px;z-index:3;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-size:8px;pointer-events:none';['SIGNAL','LATENCY','ENTROPY','DEFENSE'].forEach((x,i)=>{const d=document.createElement('div');d.innerHTML='<span style="color:var(--text-dim)">'+x+'</span><br><b id="addonT'+i+'">--</b>';d.style.cssText='border:1px solid rgba(75,216,255,.14);background:rgba(5,9,18,.62);padding:4px;text-align:left';hud.appendChild(d);});cp.appendChild(hud);
+    setInterval(()=>{const active=attackState==='running';document.getElementById('addonT0').textContent=(active?-40+Math.round(Math.random()*8):-18)+'dB';document.getElementById('addonT1').textContent=(active?24:11)+Math.round(Math.random()*6)+'ms';document.getElementById('addonT2').textContent=Math.round(active?60+Math.random()*25:20+Math.random()*8)+'%';document.getElementById('addonT3').textContent=active?['ADAPT','TRACE','ROTATE','HARDEN'][Math.floor(Math.random()*4)]:'QUIET';},450);
+  }
+
+
+
+  // v3: richer synthetic access manifest and dense dashboard telemetry.
+  (function(){
+    const manifest=document.getElementById('accessManifest');
+    const tags=document.getElementById('accessTags');
+    const queue=document.getElementById('missionQueue');
+    const categoryProfiles={
+      wifi:{fields:[['SSID','ssid'],['BSSID / MAC','bssid'],['SECURITY','sec'],['CHANNEL','ch'],['LOCAL IP','ip'],['GATEWAY','gateway'],['DNS','dns'],['ADMIN PANEL','adminPanel'],['ADMIN USER','adminUser'],['ADMIN PASSWORD','adminPass','secret'],['WIFI PASSWORD','password','secret'],['DHCP RANGE','dhcp'],['FIRMWARE','firmware'],['UPTIME','uptime'],['CONNECTED CLIENTS','clients']],tags:['WPA3-SIM','ADMIN CONSOLE','DHCP ACTIVE','CLIENT ENUMERATION']},
+      phone:{fields:[['NUMBER','num'],['MODEL','model'],['IMEI','imei'],['CARRIER','carrier'],['OS','os'],['DEVICE IP','ip'],['LOCK STATE','lock'],['ROOT STATE','root'],['ADMIN USER','adminUser'],['ADMIN PASSWORD','adminPass','secret'],['WIFI PASSWORD','wifiPass','secret'],['BASEBAND','baseband'],['UPTIME','uptime']],tags:['MDM-SIM','BASEBAND','DEVICE ADMIN','SESSION CACHE']},
+      computer:{fields:[['HOSTNAME','host'],['LOCAL IP','ip'],['MAC','mac'],['OS','os'],['OPEN PORTS','ports'],['USERNAME','user'],['PASSWORD','pass','secret'],['ADMIN USER','adminUser'],['ADMIN PASSWORD','adminPass','secret'],['DOMAIN','domain'],['FIREWALL','firewall'],['UPTIME','uptime'],['PROCESSES','proc']],tags:['HOST ENUM','LOCAL ADMIN','DOMAIN SIM','PROCESS MAP']},
+      satellite:{fields:[['SAT ID','id'],['UPLINK','freq'],['GROUND IP','ip'],['ORBIT','orbit'],['AUTH TOKEN','token','secret'],['GROUND USER','adminUser'],['GROUND PASSWORD','adminPass','secret'],['TELEMETRY KEY','telemetry','secret'],['CHANNEL','channel'],['HEALTH','health'],['UPTIME','uptime'],['LINK QUALITY','link']],tags:['UPLINK LOCK','GROUND STATION','TELEMETRY SIM','ORBITAL DATA']},
+      bank:{fields:[['INSTITUTION','name'],['API BASE','api'],['ACCOUNT REF','acct'],['API KEY','key','secret'],['CLIENT ID','cid'],['OAUTH USER','adminUser'],['OAUTH SECRET','adminPass','secret'],['SESSION TOKEN','session','secret'],['SCOPE','scope'],['RATE LIMIT','rate'],['LEDGER STATE','ledger'],['AUDIT MODE','audit']],tags:['OAUTH-SIM','ACCOUNT REF','AUDIT TRAIL','RATE LIMIT']},
+      software:{fields:[['APPLICATION','name'],['LICENSE EP','ep'],['API ENDPOINT','api'],['AUTH TOKEN','token','secret'],['BUILD','build'],['ADMIN USER','adminUser'],['ADMIN PASSWORD','adminPass','secret'],['LICENSE KEY','license','secret'],['SESSION ID','session','secret'],['SIGNATURE','signature'],['PROCESS','proc'],['UPTIME','uptime']],tags:['LICENSE SIM','ADMIN CONSOLE','TOKEN CACHE','BUILD TRACE']},
+      cloud:{fields:[['CLUSTER','name'],['REGION','region'],['CONTROL PLANE','cp'],['TENANT','tenant'],['CONSOLE URL','console'],['ADMIN USER','adminUser'],['ADMIN PASSWORD','adminPass','secret'],['SESSION TOKEN','session','secret'],['VPC CIDR','vpc'],['NODE COUNT','nodes'],['IAM STATE','iam'],['DRIFT','drift']],tags:['CONTROL PLANE','IAM SIM','TENANT MAP','CONFIG DRIFT']},
+      iot:{fields:[['SWARM','name'],['GATEWAY','gateway'],['FIRMWARE','fw'],['DEVICES','count'],['GATEWAY IP','ip'],['ADMIN USER','adminUser'],['ADMIN PASSWORD','adminPass','secret'],['MESH KEY','mesh','secret'],['MQTT TOPIC','topic'],['SIGNAL','signal'],['QUARANTINE','quarantine']],tags:['MESH MAP','GATEWAY','MQTT-SIM','FIRMWARE']},
+      ai:{fields:[['MODEL','name'],['VERSION','ver'],['INFERENCE NODE','node'],['CONTEXT','ctx'],['CONSOLE','console'],['ADMIN USER','adminUser'],['ADMIN PASSWORD','adminPass','secret'],['MODEL TOKEN','token','secret'],['AGENT ID','agent'],['GUARDRAIL','guardrail'],['DRIFT','drift']],tags:['MODEL CORE','AGENT SIM','GUARDRAIL','CONTEXT MAP']},
+      vehicle:{fields:[['VEHICLE','name'],['CONTROL DOMAIN','bus'],['FIRMWARE','fw'],['TELEMETRY ID','tid'],['SERVICE PORTAL','portal'],['ADMIN USER','adminUser'],['ADMIN PASSWORD','adminPass','secret'],['SERVICE TOKEN','token','secret'],['BUS STATE','busState'],['SAFETY LOCK','safety'],['DIAGNOSTIC MODE','diag']],tags:['ECU-SIM','TELEMETRY','SAFETY LOCK','DIAGNOSTIC']}
+    };
+    const fakeWord=(a,b)=>a+'-'+randInt(1000,b||9999);
+    function synthManifest(cat,t){
+      const x=Object.assign({},t);
+      x.password=x.pass||fakeWord('WIFI',9999)+'!';
+      x.adminPanel=x.adminPanel||('http://192.0.2.'+randInt(10,200)+'/admin');
+      x.adminUser=x.adminUser||pick(['root','admin','operator','sysadmin','jarvis']);
+      x.adminPass=x.adminPass||fakeWord('SIM',9999)+'$'+randInt(10,99);
+      x.gateway=x.gateway||'192.0.2.1'; x.dns=x.dns||pick(['192.0.2.53','203.0.113.53','198.51.100.53']);
+      x.dhcp=x.dhcp||'192.0.2.20 — 192.0.2.220'; x.firmware=x.firmware||'SIM-FW-'+randInt(2,9)+'.'+randInt(0,9);
+      x.uptime=x.uptime||randInt(3,91)+'d '+randInt(0,23)+'h '+randInt(0,59)+'m'; x.clients=x.clients||randInt(2,18);
+      x.ip=x.ip||'192.0.2.'+randInt(10,200); x.lock=x.lock||pick(['ENFORCED','BYPASS-SIM','PENDING']); x.root=x.root||pick(['SIM-ROOT','LOCKED','EMULATED']);
+      x.wifiPass=x.wifiPass||x.password; x.baseband=x.baseband||'SIM-BB-'+randInt(100,999); x.mac=x.mac||fakeMAC(); x.domain=x.domain||pick(['LAB\u005cSIM','NODE\u005cTEST','JARVIS.LOCAL']); x.firewall=x.firewall||pick(['ACTIVE','ADAPTIVE','SIM-OPEN']);
+      x.proc=x.proc||randInt(46,184); x.channel=x.channel||'CH-'+randInt(1,14); x.health=x.health||pick(['NOMINAL','DEGRADED','LOCKED']); x.link=x.link||randInt(71,99)+'%';
+      x.telemetry=x.telemetry||fakeWord('TLM',999999); x.scope=x.scope||pick(['read:summary','read:ledger','sandbox:*']); x.rate=x.rate||randInt(60,900)+'/min'; x.ledger=x.ledger||pick(['REPLICA-SIM','READ-ONLY','LOCKED']); x.audit=x.audit||'ENABLED';
+      x.session=x.session||fakeWord('SESS',999999); x.license=x.license||fakeWord('LIC',999999); x.signature=x.signature||'SHA-SIM-'+fakeWord('A',999999); x.console=x.console||'https://console.sim.local';
+      x.vpc=x.vpc||'10.24.0.0/16'; x.nodes=x.nodes||randInt(3,42); x.iam=x.iam||pick(['HEALTHY','DRIFTING','LOCKED']); x.drift=x.drift||randInt(1,18)+'%';
+      x.mesh=x.mesh||fakeWord('MESH',999999); x.topic=x.topic||'/sim/telemetry/'+randInt(10,99); x.signal=x.signal||'-'+randInt(34,61)+' dBm'; x.quarantine=x.quarantine||pick(['READY','PARTIAL','ACTIVE']); x.count=x.count||randInt(24,240);
+      x.agent=x.agent||'AGENT-'+randInt(100,999); x.guardrail=x.guardrail||pick(['NOMINAL','STRESSED','LOCKED']); x.token=x.token||fakeWord('TOK',999999); x.portal=x.portal||'https://service.sim.local'; x.busState=x.busState||pick(['NOMINAL','ISOLATED','DIAGNOSTIC']); x.safety=x.safety||pick(['ARMED','LOCKED','SIM-OVERRIDE']); x.diag=x.diag||pick(['READY','RUNNING','SAFE']);
+      return x;
+    }
+    function renderManifest(){
+      if(!manifest||!currentTarget)return;
+      const x=synthManifest(currentCategory,currentTarget), prof=categoryProfiles[currentCategory]||categoryProfiles.software;
+      const unlocked = attackState==='success';
+      manifest.innerHTML=prof.fields.map(f=>{const raw=x[f[1]]??'—';const shown=f[2]==='secret'&&!unlocked?'••••••••••••':raw;return `<div class="kv ${f[2]||''}"><span>${f[0]}</span><b>${shown}</b></div>`;}).join('');
+      const stateTag=unlocked?'ACCESS MANIFEST UNSEALED':'CREDENTIALS SEALED';
+      tags.innerHTML=`<span class="tag ${unlocked?'hot':''}">${stateTag}</span>`+prof.tags.map((t,i)=>`<span class="tag ${i===0&&!unlocked?'hot':''}">${t}</span>`).join('');
+      document.getElementById('topMain').textContent=(currentTarget.name||currentTarget.ssid||currentTarget.host||currentTarget.id||'CORE').slice(0,8).toUpperCase();
+    }
+    const oldReroll=rerollTarget; rerollTarget=function(){oldReroll();renderManifest();resetQueue();};
+    const oldFinalize=finalize; finalize=function(success){oldFinalize(success);if(success){renderManifest();setCoreState('success');}};
+    const phaseNames=['DISCOVERY','IDENTITY GRAPH','CONTROL CHANNEL','CREDENTIAL VAULT','PERSISTENCE CHECK','EXFIL SIM','CLEANUP'];
+    function resetQueue(){if(!queue)return;queue.innerHTML=phaseNames.map((x,i)=>`<div class="qitem" data-i="${i}"><span class="qdot"></span><span>${x}</span><b style="margin-left:auto;color:var(--text-dim)">STAGED</b></div>`).join('');}
+    resetQueue();
+    setInterval(()=>{
+      const active=attackState==='running'; const pct=active?randInt(52,96):randInt(8,32);
+      const vals=[randInt(22,91)+'%',randInt(28,88)+'%',randInt(12,740)+' KB/s',active?randInt(54,97):randInt(8,39),active?randInt(8,64):randInt(2,12),active?randInt(3,9):0];
+      ['mCpu','mMem','mNet','mRisk','mNodes','mQueue'].forEach((id,i)=>document.getElementById(id).textContent=vals[i]);
+      document.getElementById('defensePct').textContent=pct+'%';document.getElementById('defenseBar').style.width=pct+'%';
+      const an=active?randInt(38,92):randInt(6,26);document.getElementById('anomalyPct').textContent=an+'%';document.getElementById('anomalyBar').style.width=an+'%';
+      if(active){const idx=Math.min(phaseNames.length-1,Math.floor((attempt/Math.max(maxAttempts,1))*phaseNames.length));document.querySelectorAll('.qitem').forEach((el,i)=>{el.classList.remove('done','warn');const b=el.querySelector('b');if(i<idx){el.classList.add('done');b.textContent='COMPLETE'}else if(i===idx){el.classList.add('warn');b.textContent='ACTIVE'}else b.textContent='STAGED';});}
+    },500);
+  })();
+
+  // Scenario controls, purely visual/synthetic.
+  const extra=document.createElement('div');extra.className='toolrow';extra.style.marginTop='10px';extra.innerHTML='<div class="toolchip" id="cascadeBtn">CASCADE SCENARIO</div><div class="toolchip" id="matrixBtn">MATRIX VIEW</div><div class="toolchip" id="pulseBtn">PULSE FX</div>';document.querySelector('.centerpanel').appendChild(extra);
+  document.getElementById('cascadeBtn').onclick=()=>{['cloud','iot','ai','vehicle'].forEach((c,i)=>setTimeout(()=>{currentCategory=c;rerollTarget();document.querySelectorAll('#tabBar button').forEach(b=>b.classList.toggle('active',b.dataset.cat===c));},i*650));};
+  document.getElementById('pulseBtn').onclick=()=>{if(core3d_m){core3d_m.scale.set(1.55,1.55,1.55);setTimeout(()=>core3d_m.scale.set(1,1,1),260);}};
+  document.getElementById('matrixBtn').onclick=()=>{document.body.classList.toggle('matrix-mode');document.querySelector('.logpanel').style.filter=document.body.classList.contains('matrix-mode')?'hue-rotate(35deg) brightness(1.18)':'';};
+})();
+})();
+
+</script>
+</body>
+</html>

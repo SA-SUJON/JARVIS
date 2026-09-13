@@ -1,13 +1,55 @@
 <!doctype html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#080c12" />
-    <title>JARVIS — Neural Command Center</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080c12" />
+  <title>JARVIS</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script>
+    if (!window.jarvis) {
+      window.jarvis = {
+        getSettings: async () => ({ providers: [], voice: 'en-CA-LiamNeural', voiceProfile: 'natural', language: 'en', wakeWord: true, voiceEnabled: true, assistantName: 'JARVIS', userName: 'SA SUJON', legacyKeys: {} }),
+        setSettings: async () => { },
+        faceProfiles: async () => [],
+        saveFaceProfile: async () => { },
+        deleteFaceProfile: async () => true,
+        clearFaceProfiles: async () => true,
+        listModels: async () => [],
+        diagnostics: async () => ({}),
+        networkStatus: async () => ({}),
+        deviceIdentity: async () => ({}),
+        requestTelemetry: async () => { },
+        onSystemTelemetry: () => () => { },
+        adb: async () => ({ ok: false, stdout: '', stderr: '', code: 1 }),
+        adbStatus: async () => ({ installed: false, available: false, output: '', devices: [] }),
+        currentLocation: async () => ({}),
+        weather: async () => ({}),
+        searchLocation: async () => [],
+        systemLogs: async () => ({ source: 'browser', lines: [] }),
+        query: async () => ({ kind: 'text', answer: 'Neural core online in browser mode.', provider: 'local', attempts: [] }),
+        pythonCapability: async () => ({}),
+        voiceEmbed: async () => [],
+        voiceStatus: async () => ({ nativeListen: true, piper: false, kokoro: false, edge: true, note: 'Browser mode' }),
+        sttStart: async () => ({ available: true, running: true }),
+        sttStatus: async () => ({ running: false, script: '' }),
+        sttStop: async () => true,
+        onSttTranscript: () => () => { },
+        onSttError: () => () => { },
+        speak: async () => ({ source: 'browser' }),
+        openUrl: async () => { },
+        requestElevation: async () => false,
+        minimize: async () => { },
+        maximize: async () => { },
+        close: async () => { }
+      };
+    }
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

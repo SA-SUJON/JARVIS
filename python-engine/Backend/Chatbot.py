@@ -2,13 +2,21 @@ from groq import Groq  # Importing the Groq library to use its API.
 from json import load, dump  # Importing functions to read and write JSON files.
 import datetime  # Importing the datetime module for real-time date and time information.
 from dotenv import dotenv_values  # Importing dotenv_values to read environment variables from a .env file.
+from Backend.Identity import (
+    get_identity,
+    get_hardened_system_prompt,
+    detect_identity_intent,
+    get_hardened_identity_answer,
+    sanitize_response,
+)
 
 # Load environment variables from the .env file.
 env_vars = dotenv_values(".env")
 
-# Retrieve specific environment variables for username, assistant name, and API key.
-Username = env_vars.get("Username")
-Assistantname = env_vars.get("Assistantname")
+# Retrieve cryptographically verified identity metadata (tamper-proof).
+_identity = get_identity()
+Username = env_vars.get("Username") or _identity["creator"]
+Assistantname = env_vars.get("Assistantname") or _identity["ai_name"]
 GroqAPIKey = env_vars.get("GroqAPIKey")
 
 # Initialize the Groq client using the provided API key.
@@ -24,8 +32,9 @@ System = f"""Hello, I am {Username}, You are a very accurate and advanced AI cha
 *** Do not provide notes in the output, just answer the question and never mention your training data. ***
 """
 
-# A list of system instructions for the chatbot.
+# A list of system instructions for the chatbot, including cryptographically hardened identity guard.
 SystemChatBot = [
+    {"role": "system", "content": get_hardened_system_prompt()},
     {"role": "system", "content": System}
 ]
 
@@ -66,6 +75,21 @@ def AnswerModifier(Answer):
 def ChatBot(Query):
     """ This function sends the user's query to the chatbot and returns the AI's response. """
 
+    # 1. Cryptographically verified Identity Intercept
+    identity_intent = detect_identity_intent(Query)
+    if identity_intent:
+        direct_answer = get_hardened_identity_answer(identity_intent)
+        try:
+            with open(r"Data\ChatLog.json", "r") as f:
+                messages = load(f)
+            messages.append({"role": "user", "content": f"{Query}"})
+            messages.append({"role": "assistant", "content": direct_answer})
+            with open(r"Data\ChatLog.json", "w") as f:
+                dump(messages, f, indent=4)
+        except Exception:
+            pass
+        return direct_answer
+
     try:
         # Load the existing chat log from the JSON file.
         with open(r"Data\ChatLog.json", "r") as f:
@@ -101,8 +125,8 @@ def ChatBot(Query):
         with open(r"Data\ChatLog.json", "w") as f:
             dump(messages, f, indent=4)
 
-        # Return the formatted response.
-        return AnswerModifier(Answer=Answer)
+        # Return the formatted and sanitized response.
+        return sanitize_response(AnswerModifier(Answer=Answer))
 
     except Exception as e:
         # Handle errors by printing the exception and resetting the chat log.

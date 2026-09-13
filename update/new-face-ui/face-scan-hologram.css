@@ -1,0 +1,188 @@
+/* face-scan-hologram.css — scoped styles (.fsh-*). Background is transparent. */
+
+.fsh-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: none;
+  user-select: none;
+  --fsh-cyan: 60, 200, 255;
+  --fsh-accent: 0, 229, 255;
+  --fsh-fg: rgba(150, 215, 255, 0.85);
+  --fsh-dim: rgba(150, 215, 255, 0.45);
+}
+
+.fsh-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: transparent;
+}
+
+/* ── HUD text ─────────────────────────────────────────── */
+.fsh-hud {
+  position: absolute;
+  font-family: ui-monospace, Menlo, Consolas, "Roboto Mono", monospace;
+  font-size: var(--fsh-hud-font, 11px);
+  line-height: 1.55;
+  letter-spacing: 0.08em;
+  color: var(--fsh-fg);
+  text-shadow: 0 0 6px rgba(var(--fsh-cyan), 0.35);
+  white-space: nowrap;
+}
+
+.fsh-hud--main {
+  left: var(--fsh-hud-left, 70%);
+  top: var(--fsh-hud-top, 50%);
+  transform: translateY(-50%);
+  min-width: 190px;
+}
+
+.fsh-hud--aux {
+  right: var(--fsh-aux-right, 70%);
+  bottom: var(--fsh-aux-bottom, 10%);
+  font-size: calc(var(--fsh-hud-font, 11px) * 0.82);
+  color: var(--fsh-dim);
+}
+
+.fsh-hud__title {
+  font-size: 12px;
+  letter-spacing: 0.28em;
+  color: rgba(var(--fsh-cyan), 0.95);
+}
+
+.fsh-hud__mode {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--fsh-dim);
+  min-height: 1.55em;
+}
+
+.fsh-hud__rule {
+  height: 1px;
+  margin: 6px 0 8px;
+  background: linear-gradient(90deg, rgba(var(--fsh-cyan), 0.7), rgba(var(--fsh-cyan), 0));
+}
+
+.fsh-hud__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.fsh-hud__k { color: var(--fsh-dim); }
+.fsh-hud__v { color: var(--fsh-fg); font-variant-numeric: tabular-nums; }
+
+.fsh-hud__aux-head {
+  letter-spacing: 0.2em;
+  color: rgba(var(--fsh-cyan), 0.8);
+  margin-bottom: 4px;
+}
+
+.fsh-hud__aux-line {
+  display: grid;
+  grid-template-columns: 6.5em 8em 3.2em;
+  gap: 8px;
+  line-height: 1.45;
+  transition: color 0.25s;
+}
+.fsh-hud__aux-s { text-align: right; }
+.fsh-hud__aux-line--hit { color: rgba(220, 250, 255, 0.95); text-shadow: 0 0 8px rgba(var(--fsh-accent), 0.6); }
+.fsh-hud__aux-line--hit .fsh-hud__aux-s { color: rgba(var(--fsh-accent), 1); }
+
+/* ── State accents ────────────────────────────────────── */
+.fsh-root--scanning .fsh-hud__mode { color: rgba(var(--fsh-accent), 0.9); }
+.fsh-root--scanning .fsh-hud__v    { color: rgba(220, 250, 255, 0.95); }
+
+.fsh-root--complete .fsh-hud__mode,
+.fsh-root--complete .fsh-hud__v    { color: rgba(240, 253, 255, 1); text-shadow: 0 0 10px rgba(var(--fsh-accent), 0.7); }
+.fsh-root--complete .fsh-hud__rule { background: linear-gradient(90deg, rgba(var(--fsh-accent), 1), rgba(var(--fsh-accent), 0)); }
+
+/* ── Degraded / compact modes ─────────────────────────── */
+.fsh-root--low .fsh-hud { text-shadow: none; }
+
+.fsh-root--noaux .fsh-hud--aux,
+.fsh-root--compact .fsh-hud--aux  { display: none; }
+.fsh-root--compact .fsh-hud--main { min-width: 140px; }
+.fsh-root--compact .fsh-hud__title { font-size: 10px; }
+
+/* ── Floating Popup Overlay ───────────────────────────── */
+.fsh-popup-overlay {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  width: min(540px, calc(100vw - 36px));
+  height: min(440px, calc(100vh - 36px));
+  z-index: 10000;
+  pointer-events: auto;
+  user-select: none;
+  filter: drop-shadow(0 12px 36px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 20px rgba(0, 229, 255, 0.22));
+  animation: fshPanelFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fshPanelFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.fsh-popup-panel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.fsh-hologram-mount {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.fsh-dismiss-btn {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 10005;
+  background: rgba(4, 14, 28, 0.85);
+  border: 1px solid rgba(60, 200, 255, 0.6);
+  color: rgba(0, 229, 255, 0.9);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 4px 9px;
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.15);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+
+.fsh-dismiss-btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: rgba(0, 229, 255, 1);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
+  color: #fff;
+}
+
+@media (max-width: 480px) {
+  .fsh-popup-overlay {
+    top: 8px;
+    left: 8px;
+    width: calc(100vw - 16px);
+    height: 380px;
+  }
+  .fsh-dismiss-btn {
+    top: 12px;
+    right: 14px;
+    font-size: 10px;
+    padding: 3px 7px;
+  }
+}

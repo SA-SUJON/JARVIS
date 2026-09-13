@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JARVIS Live Voice Recognition</title>
+    <style>
+        body { background: #0b0f19; color: #00e5ff; font-family: monospace; padding: 20px; }
+        #status { font-weight: bold; }
+        #output { border: 1px solid #00e5ff; padding: 10px; min-height: 40px; }
+    </style>
+</head>
+<body>
+    <h3>JARVIS Voice Recognition Subsystem</h3>
+    <button id="start" onclick="startRecognition()">Start</button>
+    <button id="end" onclick="stopRecognition()">Stop</button>
+    <div id="status">INITIALIZING</div>
+    <p id="output"></p>
+
+    <script>
+        const output = document.getElementById('output');
+        const statusEl = document.getElementById('status');
+        let recognition = null;
+        let isStarted = false;
+        let targetLanguage = 'en-US';
+
+        function setLanguage(lang) {
+            targetLanguage = lang || 'en-US';
+            if (recognition) {
+                recognition.lang = targetLanguage;
+            }
+        }
+
+        function clearOutput() {
+            output.textContent = "";
+        }
+
+        function startRecognition() {
+            if (isStarted && recognition) return;
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) {
+                statusEl.textContent = "SPEECH_API_NOT_SUPPORTED";
+                return;
+            }
+
+            try {
+                recognition = new SpeechRec();
+                recognition.lang = targetLanguage;
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                recognition.onstart = function() {
+                    isStarted = true;
+                    statusEl.textContent = "LISTENING";
+                };
+
+                recognition.onresult = function(event) {
+                    if (event.results.length > 0) {
+                        const latest = event.results[event.results.length - 1];
+                        if (latest.isFinal && latest[0]) {
+                            const transcript = latest[0].transcript.trim();
+                            if (transcript) {
+                                output.textContent = transcript;
+                            }
+                        }
+                    }
+                };
+
+                recognition.onerror = function(event) {
+                    statusEl.textContent = "ERROR: " + (event.error || "unknown");
+                    // On non-fatal errors, attempt to re-engage
+                    if (event.error !== 'not-allowed') {
+                        setTimeout(() => {
+                            if (isStarted) {
+                                try { recognition.start(); } catch(e){}
+                            }
+                        }, 500);
+                    }
+                };
+
+                recognition.onend = function() {
+                    statusEl.textContent = "ENDED";
+                    if (isStarted) {
+                        setTimeout(() => {
+                            try { recognition.start(); } catch(e){}
+                        }, 250);
+                    }
+                };
+
+                recognition.start();
+                isStarted = true;
+            } catch (err) {
+                statusEl.textContent = "EXCEPTION: " + err.message;
+            }
+        }
+
+        function stopRecognition() {
+            isStarted = false;
+            if (recognition) {
+                try { recognition.stop(); } catch(e){}
+            }
+            statusEl.textContent = "STOPPED";
+        }
+
+        // Auto-start on document load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(startRecognition, 300);
+        });
+    </script>
+</body>
+</html>

@@ -23,6 +23,11 @@ build/
 .env
 .env.*
 !.env.example
+*.private.pem
+*private_key*
+*.key
+Data/security/
+python-engine/Data/security/
 
 # =========================
 # Node.js / Electron
@@ -57,3 +62,10 @@ electron-builder.yaml
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

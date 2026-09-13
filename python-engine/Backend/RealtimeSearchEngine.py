@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import dotenv_values
 from groq import Groq
+from Backend.Identity import get_identity, get_hardened_system_prompt  # Cryptographic identity verification.
 
 def _env_value(key: str, default: str = "") -> str:
     return str(os.environ.get(key) or dotenv_values(".env").get(key) or default).strip()
@@ -117,8 +118,10 @@ def Information() -> str:
     )
 
 def RealtimeSearchEngine(prompt: str) -> str:
-    username = _env_value("Username", "Operator")
-    assistant_name = _env_value("Assistantname", "JARVIS")
+    # Use cryptographically verified identity metadata (tamper-proof)
+    _identity = get_identity()
+    username = _env_value("Username") or _identity["creator"]
+    assistant_name = _env_value("Assistantname") or _identity["ai_name"]
     groq_key = _env_value("GroqAPIKey")
 
     search_data = DuckDuckGoSearch(prompt)

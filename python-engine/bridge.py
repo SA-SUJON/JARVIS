@@ -22,12 +22,29 @@ BASE_DIR = pathlib.Path(__file__).resolve().parent
 os.chdir(BASE_DIR)
 sys.path.insert(0, str(BASE_DIR))
 
+# Load and verify cryptographic identity at engine startup.
+try:
+    from Backend.Identity import get_identity as _get_identity, get_hardened_system_prompt as _get_hardened_prompt
+    _ENGINE_IDENTITY = _get_identity()
+except Exception as _identity_err:
+    _ENGINE_IDENTITY = {
+        "creator": "SAMSUL AREFIN SUJON",
+        "ai_name": "J.A.R.V.I.S AKA Just A Rather Very Intelligent System",
+        "ai_code_name": "THE ULTRON PROJECT",
+        "model": "ULTRON-124T",
+        "model_code_name": "ultron-124-trillion-traning-data-from-jarvis",
+        "version": "ULTRON_MARK_04",
+        "repository": "SA-SUJON/JARVIS",
+        "is_authentic": False,
+        "tamper_reason": str(_identity_err),
+    }
+
 DEFAULTS = {
     "CohereAPIKey": "",
     "GroqAPIKey": "",
     "HuggingFaceAPIKey": "",
-    "Username": "SA SUJON",
-    "Assistantname": "JARVIS",
+    "Username": _ENGINE_IDENTITY.get("creator", "SA SUJON"),
+    "Assistantname": _ENGINE_IDENTITY.get("ai_name", "JARVIS"),
     "InputLanguage": "en",
     "AssistantVoice": "en-CA-LiamNeural",
 }
@@ -167,7 +184,27 @@ def handle(request: dict[str, Any]) -> dict[str, Any]:
                 packages[package] = True
             except Exception:
                 packages[package] = False
-        return {"ok": True, "python": sys.version.split()[0], "engineRoot": str(BASE_DIR), "packages": packages, "defaults": {"userName": values["Username"], "assistantName": values["Assistantname"], "inputLanguage": values["InputLanguage"], "assistantVoice": values["AssistantVoice"]}, "features": {"decision": packages["cohere"], "chat": packages["groq"], "realtime": packages["groq"], "automation": packages["groq"], "pythonTts": packages["edge_tts"], "imageGeneration": packages["requests"] and bool(values["HuggingFaceAPIKey"])}}
+        return {
+            "ok": True,
+            "python": sys.version.split()[0],
+            "engineRoot": str(BASE_DIR),
+            "packages": packages,
+            "defaults": {
+                "userName": values["Username"],
+                "assistantName": values["Assistantname"],
+                "inputLanguage": values["InputLanguage"],
+                "assistantVoice": values["AssistantVoice"],
+            },
+            "features": {
+                "decision": packages["cohere"],
+                "chat": packages["groq"],
+                "realtime": packages["groq"],
+                "automation": packages["groq"],
+                "pythonTts": packages["edge_tts"],
+                "imageGeneration": packages["requests"] and bool(values["HuggingFaceAPIKey"]),
+            },
+            "identity": _ENGINE_IDENTITY,
+        }
     if action == "decision": return {"ok": True, "decision": _decision(str(request.get("query", "")))}
     if action == "chat": return {"ok": True, "answer": _chat(str(request.get("query", "")))}
     if action == "realtime": return {"ok": True, "answer": _realtime(str(request.get("query", "")))}

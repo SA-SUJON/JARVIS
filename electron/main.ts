@@ -8,6 +8,7 @@ import { EdgeTTS } from 'node-edge-tts';
 import { DEFAULT_PROVIDERS, failoverChat, listModels, utilityAnswer, type ChatMessage, type ModelInfo, type ProviderConfig, type ProviderId } from './providers.js';
 import { getCoreDiagnostics, getNetworkStatus, getDeviceIdentity, runAdb, getAdbStatus, currentLocation, getWeather, searchLocation, getSystemLogs } from './system.js';
 import { cleanForSpeech } from './speech.js';
+import { loadAndVerifyIdentity, detectIdentityIntent, getHardenedIdentityAnswer, getHardenedSystemDirective, sanitizeAIResponse } from './identity.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,12 +66,91 @@ const VOICE_PROFILES = { natural: { edgeRate: '-2%', edgePitch: '-1%', piperNois
 type VoiceProfile = keyof typeof VOICE_PROFILES;
 
 
-type PersistedSettings = { providers: ProviderConfig[]; voice: string; voiceProfile: keyof typeof VOICE_PROFILES; language: string; wakeWord: boolean; voiceEnabled: boolean; assistantName: string; userName: string; legacyKeys: { CohereAPIKey?: string; GroqAPIKey?: string; HuggingFaceAPIKey?: string } };
-async function envDefaults() { const candidates = [path.join(app.getAppPath(), '.env'), path.join(process.resourcesPath, '.env'), path.join(process.cwd(), '.env')]; for (const file of candidates) { try { const text = await fs.readFile(file, 'utf8'); const values: Record<string, string> = {}; for (const line of text.split(/\r?\n/)) { const match = line.match(/^\s*([A-Za-z_][\w]*)\s*=\s*(.*?)\s*$/); if (match) values[match[1]] = match[2].replace(/^['"]|['"]$/g, ''); } return { assistantName: values.Assistantname || 'JARVIS', userName: values.Username || 'SA SUJON', language: values.InputLanguage || 'en', voice: values.AssistantVoice || 'en-CA-LiamNeural', legacyKeys: { CohereAPIKey: values.CohereAPIKey || undefined, GroqAPIKey: values.GroqAPIKey || undefined, HuggingFaceAPIKey: values.HuggingFaceAPIKey || undefined } }; } catch { /* try next location */ } } return { assistantName: 'JARVIS', userName: 'SA SUJON', language: 'en', voice: 'en-CA-LiamNeural', legacyKeys: {} }; }
+type PersistedSettings = {
+  providers: ProviderConfig[];
+  geminiKeys?: string[];
+  voice: string;
+  voiceProfile: keyof typeof VOICE_PROFILES;
+  language: string;
+  wakeWord: boolean;
+  voiceEnabled: boolean;
+  assistantName: string;
+  userName: string;
+  legacyKeys: { CohereAPIKey?: string; GroqAPIKey?: string; HuggingFaceAPIKey?: string };
+};
+
+async function envDefaults() {
+  const candidates = [path.join(app.getAppPath(), '.env'), path.join(process.resourcesPath, '.env'), path.join(process.cwd(), '.env')];
+  for (const file of candidates) {
+    try {
+      const text = await fs.readFile(file, 'utf8');
+      const values: Record<string, string> = {};
+      for (const line of text.split(/\r?\n/)) {
+        const match = line.match(/^\s*([A-Za-z_][\w]*)\s*=\s*(.*?)\s*$/);
+        if (match) values[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+      }
+      const rawGeminiKeys = values.GeminiAPIKeys || values.GeminiAPIKey || '';
+      const geminiKeys = rawGeminiKeys ? rawGeminiKeys.split(/[,;\r\n]+/).map((k) => k.trim()).filter(Boolean) : [];
+      return {
+        assistantName: values.Assistantname || 'JARVIS',
+        userName: values.Username || 'SA SUJON',
+        language: values.InputLanguage || 'en',
+        voice: values.AssistantVoice || 'en-CA-LiamNeural',
+        geminiKeys,
+        legacyKeys: {
+          CohereAPIKey: values.CohereAPIKey || undefined,
+          GroqAPIKey: values.GroqAPIKey || undefined,
+          HuggingFaceAPIKey: values.HuggingFaceAPIKey || undefined,
+        },
+      };
+    } catch {
+      /* try next location */
+    }
+  }
+  return { assistantName: 'JARVIS', userName: 'SA SUJON', language: 'en', voice: 'en-CA-LiamNeural', geminiKeys: [], legacyKeys: {} };
+}
+
 function decryptSecret(value?: string) { return value && safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(value, 'base64')) : undefined; }
 function encryptSecret(value?: string) { return value && safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(value).toString('base64') : undefined; }
-function resolvePythonRoot() { const packagedRoot = path.join(process.resourcesPath, 'jarvis-python'); const sourceRoot = path.join(app.getAppPath(), 'references', 'jarvisai'); return existsSync(packagedRoot) ? packagedRoot : sourceRoot; }
-async function syncPythonEnv(settings: { language: string; assistantName: string; userName: string }) { const envPath = path.join(resolvePythonRoot(), '.env'); try { let content = await fs.readFile(envPath, 'utf8'); const values: Record<string, string> = { InputLanguage: settings.language, Assistantname: settings.assistantName, Username: settings.userName }; for (const [key, value] of Object.entries(values)) { const safeValue = value.replace(/[\r\n]/g, ' ').trim(); const pattern = new RegExp(`^(\\s*${key}\\s*=\\s*).*$`, 'mi'); if (pattern.test(content)) content = content.replace(pattern, `$1${safeValue}`); else content += `${content.endsWith('\\n') ? '' : '\\n'}${key} = ${safeValue}\\n`; } await fs.writeFile(envPath, content, 'utf8'); } catch { /* packaged resources may be read-only; bundled defaults remain usable */ } }
+
+function resolvePythonRoot() {
+  const packagedRoot = path.join(process.resourcesPath, 'jarvis-python');
+  const sourceRoot = path.join(app.getAppPath(), 'references', 'jarvisai');
+  return existsSync(packagedRoot) ? packagedRoot : sourceRoot;
+}
+
+function resolvePythonExecutable(root: string) {
+  if (process.env.JARVIS_PYTHON) return process.env.JARVIS_PYTHON;
+  const venvPy = path.join(root, '.venv', 'Scripts', 'python.exe');
+  const venvSitePackages = path.join(root, '.venv', 'Lib', 'site-packages');
+  if (existsSync(venvPy) && existsSync(path.join(venvSitePackages, 'selenium'))) {
+    return venvPy;
+  }
+  return 'python';
+}
+
+async function syncPythonEnv(settings: { language: string; assistantName: string; userName: string; geminiKeys?: string[] }) {
+  const envPath = path.join(resolvePythonRoot(), '.env');
+  try {
+    let content = await fs.readFile(envPath, 'utf8');
+    const values: Record<string, string> = {
+      InputLanguage: settings.language,
+      Assistantname: settings.assistantName,
+      Username: settings.userName,
+      GeminiAPIKeys: (settings.geminiKeys || []).join(','),
+      GeminiAPIKey: (settings.geminiKeys || [])[0] || '',
+    };
+    for (const [key, value] of Object.entries(values)) {
+      const safeValue = value.replace(/[\r\n]/g, ' ').trim();
+      const pattern = new RegExp(`^(\\s*${key}\\s*=\\s*).*$`, 'mi');
+      if (pattern.test(content)) content = content.replace(pattern, `$1${safeValue}`);
+      else content += `${content.endsWith('\n') ? '' : '\n'}${key} = ${safeValue}\n`;
+    }
+    await fs.writeFile(envPath, content, 'utf8');
+  } catch {
+    /* packaged resources may be read-only */
+  }
+}
 
 type PythonPending = { resolve: (value: any) => void; reject: (error: Error) => void; timer: NodeJS.Timeout };
 let pythonBridge: ChildProcessWithoutNullStreams | null = null;
@@ -79,6 +159,7 @@ let pythonBridgeCounter = 0;
 let telemetryTimer: NodeJS.Timeout | null = null;
 let telemetryInFlight = false;
 const pythonPending = new Map<string, PythonPending>();
+
 async function publishTelemetry() {
   if (telemetryInFlight || !mainWindow || mainWindow.isDestroyed()) return;
   telemetryInFlight = true;
@@ -88,39 +169,255 @@ async function publishTelemetry() {
       diagnostics: diagnostics.status === 'fulfilled' ? diagnostics.value : { telemetrySource: 'TELEMETRY_ERROR', error: diagnostics.reason instanceof Error ? diagnostics.reason.message : String(diagnostics.reason) },
       network: network.status === 'fulfilled' ? network.value : null,
       identity: identity.status === 'fulfilled' ? identity.value : null,
-      collectedAt: new Date().toISOString()
+      collectedAt: new Date().toISOString(),
     });
   } finally {
     telemetryInFlight = false;
   }
 }
-function rejectPythonPending(error: Error) { for (const [id, pending] of pythonPending) { clearTimeout(pending.timer); pending.reject(error); pythonPending.delete(id); } }
-function bridgeConfig(settings: PersistedSettings) { return { providers: settings.providers, language: settings.language, voice: settings.voice, assistantName: settings.assistantName, userName: settings.userName }; }
+
+function rejectPythonPending(error: Error) {
+  for (const [id, pending] of pythonPending) {
+    clearTimeout(pending.timer);
+    pending.reject(error);
+    pythonPending.delete(id);
+  }
+}
+
+function bridgeConfig(settings: PersistedSettings) {
+  const geminiKeys = settings.geminiKeys || settings.providers.find((p) => p.id === 'gemini')?.keys || [];
+  return {
+    providers: settings.providers,
+    geminiKeys,
+    language: settings.language,
+    voice: settings.voice,
+    assistantName: settings.assistantName,
+    userName: settings.userName,
+  };
+}
+
 async function operatorProfileContext() {
   const operator = (await readFaceProfiles()).find((profile) => profile.relation === 'operator');
   if (!operator) return '';
   const details = [operator.facts.age != null ? `Age: ${operator.facts.age}` : '', operator.facts.work ? `Work: ${operator.facts.work}` : '', operator.facts.notes ? `Notes: ${operator.facts.notes}` : ''].filter(Boolean).join('; ');
   return `Known operator profile: ${operator.displayName}.${details ? ` ${details}.` : ''} Use this only when relevant and do not reveal private profile data unnecessarily.`;
 }
-function ensurePythonBridge() { if (pythonBridge) return pythonBridge; const root = resolvePythonRoot(); const script = path.join(root, 'Backend', 'ElectronBridge.py'); if (!existsSync(script)) throw new Error(`Python capability bridge not found at ${script}`); const preferred = process.env.JARVIS_PYTHON || path.join(root, '.venv', 'Scripts', 'python.exe'); const executable = existsSync(preferred) ? preferred : 'python'; pythonBridge = spawn(executable, ['-u', path.join('Backend', 'ElectronBridge.py')], { cwd: root, windowsHide: true, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } }); pythonBridge.stdout.setEncoding('utf8'); pythonBridge.stdout.on('data', (chunk) => { pythonBridgeBuffer += chunk; const lines = pythonBridgeBuffer.split(/\r?\n/); pythonBridgeBuffer = lines.pop() || ''; for (const line of lines) { try { const message = JSON.parse(line) as { id: string; ok: boolean; result?: any; error?: string }; const pending = pythonPending.get(message.id); if (!pending) continue; clearTimeout(pending.timer); pythonPending.delete(message.id); if (message.ok) pending.resolve(message.result); else pending.reject(new Error(message.error || 'Python capability failed')); } catch { /* protocol noise is forwarded on stderr by the bridge */ } } }); pythonBridge.stderr.setEncoding('utf8'); pythonBridge.stderr.on('data', (chunk) => { const detail = String(chunk).trim(); if (detail) mainWindow?.webContents.send('python:error', detail); }); pythonBridge.once('error', (error) => { pythonBridge = null; rejectPythonPending(error); mainWindow?.webContents.send('python:error', error.message); }); pythonBridge.once('close', (code, signal) => { const error = new Error(`Python capability bridge exited (code=${code ?? 'unknown'}, signal=${signal ?? 'none'})`); pythonBridge = null; pythonBridgeBuffer = ''; rejectPythonPending(error); mainWindow?.webContents.send('python:stopped', { code, signal }); }); return pythonBridge; }
-function rawPythonRequest(op: string, payload: Record<string, any>, timeoutMs = 120000) { const child = ensurePythonBridge(); const id = `python-${Date.now()}-${++pythonBridgeCounter}`; return new Promise<any>((resolve, reject) => { const timer = setTimeout(() => { pythonPending.delete(id); reject(new Error(`Python capability timeout: ${op}`)); }, timeoutMs); pythonPending.set(id, { resolve, reject, timer }); try { child.stdin.write(`${JSON.stringify({ id, op, ...(op === 'configure' ? { config: payload } : { payload }) })}\n`); } catch (error) { clearTimeout(timer); pythonPending.delete(id); reject(error instanceof Error ? error : new Error(String(error))); } }); }
-async function callPython(op: string, payload: Record<string, any>, settings: PersistedSettings, timeoutMs = 120000) { await rawPythonRequest('configure', bridgeConfig(settings), 20000); return await rawPythonRequest(op, payload, timeoutMs); }
-async function imageDataUrls(files: string[]) { return await Promise.all(files.slice(0, 4).map(async (file) => { const absolute = path.resolve(file); const root = path.resolve(resolvePythonRoot()); if (!absolute.startsWith(`${root}${path.sep}`)) return null; try { const buffer = await fs.readFile(absolute); const extension = path.extname(absolute).toLowerCase(); const mime = extension === '.png' ? 'image/png' : extension === '.webp' ? 'image/webp' : 'image/jpeg'; return `data:${mime};base64,${buffer.toString('base64')}`; } catch { return null; } })).then((items) => items.filter((item): item is string => Boolean(item))); }
-function deterministicDecisions(query: string) { const clean = query.trim(); const match = clean.match(/^generate\s+(?:an?\s+)?image\s+(?:of\s+)?(.+)$/i); if (match) return [`generate image ${match[1]}`]; if (/^(open|close|play|content|google search|youtube search|system)\s+/i.test(clean)) return [clean]; return []; }
+
+function ensurePythonBridge() {
+  if (pythonBridge) return pythonBridge;
+  const root = resolvePythonRoot();
+  const script = path.join(root, 'Backend', 'ElectronBridge.py');
+  if (!existsSync(script)) throw new Error(`Python capability bridge not found at ${script}`);
+  const executable = resolvePythonExecutable(root);
+
+  pythonBridge = spawn(executable, ['-u', path.join('Backend', 'ElectronBridge.py')], { cwd: root, windowsHide: true, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
+  pythonBridge.stdout.setEncoding('utf8');
+  pythonBridge.stdout.on('data', (chunk) => {
+    pythonBridgeBuffer += chunk;
+    const lines = pythonBridgeBuffer.split(/\r?\n/);
+    pythonBridgeBuffer = lines.pop() || '';
+    for (const line of lines) {
+      try {
+        const message = JSON.parse(line) as { id: string; ok: boolean; result?: any; error?: string };
+        const pending = pythonPending.get(message.id);
+        if (!pending) continue;
+        clearTimeout(pending.timer);
+        pythonPending.delete(message.id);
+        if (message.ok) pending.resolve(message.result);
+        else pending.reject(new Error(message.error || 'Python capability failed'));
+      } catch {
+        /* protocol noise forwarded to stderr */
+      }
+    }
+  });
+
+  pythonBridge.stderr.setEncoding('utf8');
+  pythonBridge.stderr.on('data', (chunk) => {
+    const detail = String(chunk).trim();
+    if (detail) mainWindow?.webContents.send('python:error', detail);
+  });
+
+  pythonBridge.once('error', (error) => {
+    pythonBridge = null;
+    rejectPythonPending(error);
+    mainWindow?.webContents.send('python:error', error.message);
+  });
+
+  pythonBridge.once('close', (code, signal) => {
+    const error = new Error(`Python capability bridge exited (code=${code ?? 'unknown'}, signal=${signal ?? 'none'})`);
+    pythonBridge = null;
+    pythonBridgeBuffer = '';
+    rejectPythonPending(error);
+    mainWindow?.webContents.send('python:stopped', { code, signal });
+  });
+
+  return pythonBridge;
+}
+
+function rawPythonRequest(op: string, payload: Record<string, any>, timeoutMs = 120000) {
+  const child = ensurePythonBridge();
+  const id = `python-${Date.now()}-${++pythonBridgeCounter}`;
+  return new Promise<any>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pythonPending.delete(id);
+      reject(new Error(`Python capability timeout: ${op}`));
+    }, timeoutMs);
+    pythonPending.set(id, { resolve, reject, timer });
+    try {
+      child.stdin.write(`${JSON.stringify({ id, op, ...(op === 'configure' ? { config: payload } : { payload }) })}\n`);
+    } catch (error) {
+      clearTimeout(timer);
+      pythonPending.delete(id);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+}
+
+async function callPython(op: string, payload: Record<string, any>, settings: PersistedSettings, timeoutMs = 120000) {
+  await rawPythonRequest('configure', bridgeConfig(settings), 20000);
+  return await rawPythonRequest(op, payload, timeoutMs);
+}
+
+async function imageDataUrls(files: string[]) {
+  return await Promise.all(
+    files.slice(0, 4).map(async (file) => {
+      const absolute = path.resolve(file);
+      const root = path.resolve(resolvePythonRoot());
+      if (!absolute.startsWith(`${root}${path.sep}`)) return null;
+      try {
+        const buffer = await fs.readFile(absolute);
+        const extension = path.extname(absolute).toLowerCase();
+        const mime = extension === '.png' ? 'image/png' : extension === '.webp' ? 'image/webp' : 'image/jpeg';
+        return `data:${mime};base64,${buffer.toString('base64')}`;
+      } catch {
+        return null;
+      }
+    })
+  ).then((items) => items.filter((item): item is string => Boolean(item)));
+}
+
+function deterministicDecisions(query: string) {
+  const clean = query.trim();
+  const match = clean.match(/^generate\s+(?:an?\s+)?image\s+(?:of\s+)?(.+)$/i);
+  if (match) return [`generate image ${match[1]}`];
+  if (/^(open|close|play|content|google search|youtube search|system)\s+/i.test(clean)) return [clean];
+  return [];
+}
+
 async function readSettings(): Promise<PersistedSettings> {
   const defaults = await envDefaults();
   try {
-    const raw = JSON.parse(await fs.readFile(settingsPath(), 'utf8')) as { providers?: ProviderConfig[]; encryptedKeys?: Record<string, string>; encryptedLegacyKeys?: Record<string, string>; voice?: string; voiceProfile?: keyof typeof VOICE_PROFILES; language?: string; wakeWord?: boolean; voiceEnabled?: boolean; assistantName?: string; userName?: string };
-    const legacyKeys = { CohereAPIKey: decryptSecret(raw.encryptedLegacyKeys?.CohereAPIKey) || defaults.legacyKeys.CohereAPIKey, GroqAPIKey: decryptSecret(raw.encryptedLegacyKeys?.GroqAPIKey) || defaults.legacyKeys.GroqAPIKey, HuggingFaceAPIKey: decryptSecret(raw.encryptedLegacyKeys?.HuggingFaceAPIKey) || defaults.legacyKeys.HuggingFaceAPIKey };
-    const legacyByProvider: Partial<Record<ProviderId, string | undefined>> = { cohere: legacyKeys.CohereAPIKey, groq: legacyKeys.GroqAPIKey, huggingface: legacyKeys.HuggingFaceAPIKey };
-    const providers = (raw.providers?.length ? raw.providers : DEFAULT_PROVIDERS).map((p) => ({ ...p, key: decryptSecret(raw.encryptedKeys?.[p.id]) || legacyByProvider[p.id] }));
-    return { providers, voice: raw.voice || defaults.voice, voiceProfile: raw.voiceProfile && raw.voiceProfile in VOICE_PROFILES ? raw.voiceProfile : 'natural', language: raw.language || defaults.language, wakeWord: raw.wakeWord ?? true, voiceEnabled: raw.voiceEnabled ?? true, assistantName: raw.assistantName || defaults.assistantName, userName: raw.userName || defaults.userName, legacyKeys };
-  } catch { return { providers: DEFAULT_PROVIDERS, voice: defaults.voice, voiceProfile: 'natural', language: defaults.language, wakeWord: true, voiceEnabled: true, assistantName: defaults.assistantName, userName: defaults.userName, legacyKeys: defaults.legacyKeys }; }
+    const raw = JSON.parse(await fs.readFile(settingsPath(), 'utf8')) as {
+      providers?: ProviderConfig[];
+      geminiKeys?: string[];
+      encryptedKeys?: Record<string, string>;
+      encryptedGeminiKeys?: string[];
+      encryptedLegacyKeys?: Record<string, string>;
+      voice?: string;
+      voiceProfile?: keyof typeof VOICE_PROFILES;
+      language?: string;
+      wakeWord?: boolean;
+      voiceEnabled?: boolean;
+      assistantName?: string;
+      userName?: string;
+    };
+
+    const legacyKeys = {
+      CohereAPIKey: decryptSecret(raw.encryptedLegacyKeys?.CohereAPIKey) || defaults.legacyKeys.CohereAPIKey,
+      GroqAPIKey: decryptSecret(raw.encryptedLegacyKeys?.GroqAPIKey) || defaults.legacyKeys.GroqAPIKey,
+      HuggingFaceAPIKey: decryptSecret(raw.encryptedLegacyKeys?.HuggingFaceAPIKey) || defaults.legacyKeys.HuggingFaceAPIKey,
+    };
+    const legacyByProvider: Partial<Record<ProviderId, string | undefined>> = {
+      cohere: legacyKeys.CohereAPIKey,
+      groq: legacyKeys.GroqAPIKey,
+      huggingface: legacyKeys.HuggingFaceAPIKey,
+    };
+
+    const decryptedGeminiKeys: string[] = (raw.encryptedGeminiKeys || [])
+      .map((k) => decryptSecret(k))
+      .filter((k): k is string => Boolean(k));
+    const finalGeminiKeys = decryptedGeminiKeys.length ? decryptedGeminiKeys : (defaults.geminiKeys || []);
+
+    const providers = (raw.providers?.length ? raw.providers : DEFAULT_PROVIDERS).map((p) => {
+      const key = decryptSecret(raw.encryptedKeys?.[p.id]) || legacyByProvider[p.id];
+      if (p.id === 'gemini') {
+        const keys = finalGeminiKeys.length ? finalGeminiKeys : key ? [key] : [];
+        return { ...p, key: keys[0] || key, keys };
+      }
+      return { ...p, key };
+    });
+
+    return {
+      providers,
+      geminiKeys: finalGeminiKeys,
+      voice: raw.voice || defaults.voice,
+      voiceProfile: raw.voiceProfile && raw.voiceProfile in VOICE_PROFILES ? raw.voiceProfile : 'natural',
+      language: raw.language || defaults.language,
+      wakeWord: raw.wakeWord ?? true,
+      voiceEnabled: raw.voiceEnabled ?? true,
+      assistantName: raw.assistantName || defaults.assistantName,
+      userName: raw.userName || defaults.userName,
+      legacyKeys,
+    };
+  } catch {
+    return {
+      providers: DEFAULT_PROVIDERS,
+      geminiKeys: defaults.geminiKeys,
+      voice: defaults.voice,
+      voiceProfile: 'natural',
+      language: defaults.language,
+      wakeWord: true,
+      voiceEnabled: true,
+      assistantName: defaults.assistantName,
+      userName: defaults.userName,
+      legacyKeys: defaults.legacyKeys,
+    };
+  }
 }
+
 async function writeSettings(input: Partial<PersistedSettings>) {
-  const current = await readSettings(); const providers = input.providers || current.providers; const encryptedKeys: Record<string, string> = {}; const safeProviders = providers.map(({ key, ...p }) => { const encrypted = encryptSecret(key); if (encrypted) encryptedKeys[p.id] = encrypted; return p; }); const legacyKeys: Record<string, string> = {}; for (const key of ['CohereAPIKey', 'GroqAPIKey', 'HuggingFaceAPIKey'] as const) { const encrypted = encryptSecret(input.legacyKeys?.[key] ?? current.legacyKeys[key]); if (encrypted) legacyKeys[key] = encrypted; }
-    const nextSettings = { providers: safeProviders, encryptedKeys, encryptedLegacyKeys: legacyKeys, voice: input.voice ?? current.voice, voiceProfile: input.voiceProfile ?? current.voiceProfile, language: input.language ?? current.language, wakeWord: input.wakeWord ?? current.wakeWord, voiceEnabled: input.voiceEnabled ?? current.voiceEnabled, assistantName: input.assistantName ?? current.assistantName, userName: input.userName ?? current.userName };
-  await fs.mkdir(path.dirname(settingsPath()), { recursive: true }); await fs.writeFile(settingsPath(), JSON.stringify(nextSettings, null, 2)); await syncPythonEnv({ language: nextSettings.language, assistantName: nextSettings.assistantName, userName: nextSettings.userName });
+  const current = await readSettings();
+  const providers = input.providers || current.providers;
+  const geminiKeys = input.geminiKeys || current.geminiKeys || (providers.find((p) => p.id === 'gemini')?.keys) || [];
+
+  const encryptedKeys: Record<string, string> = {};
+  const safeProviders = providers.map(({ key, keys, ...p }) => {
+    const encrypted = encryptSecret(key);
+    if (encrypted) encryptedKeys[p.id] = encrypted;
+    return p;
+  });
+
+  const encryptedGeminiKeys: string[] = geminiKeys.map((k) => encryptSecret(k)).filter((k): k is string => Boolean(k));
+
+  const legacyKeys: Record<string, string> = {};
+  for (const key of ['CohereAPIKey', 'GroqAPIKey', 'HuggingFaceAPIKey'] as const) {
+    const encrypted = encryptSecret(input.legacyKeys?.[key] ?? current.legacyKeys[key]);
+    if (encrypted) legacyKeys[key] = encrypted;
+  }
+
+  const nextSettings = {
+    providers: safeProviders,
+    geminiKeys,
+    encryptedKeys,
+    encryptedGeminiKeys,
+    encryptedLegacyKeys: legacyKeys,
+    voice: input.voice ?? current.voice,
+    voiceProfile: input.voiceProfile ?? current.voiceProfile,
+    language: input.language ?? current.language,
+    wakeWord: input.wakeWord ?? current.wakeWord,
+    voiceEnabled: input.voiceEnabled ?? current.voiceEnabled,
+    assistantName: input.assistantName ?? current.assistantName,
+    userName: input.userName ?? current.userName,
+  };
+
+  await fs.mkdir(path.dirname(settingsPath()), { recursive: true });
+  await fs.writeFile(settingsPath(), JSON.stringify(nextSettings, null, 2));
+  await syncPythonEnv({
+    language: nextSettings.language,
+    assistantName: nextSettings.assistantName,
+    userName: nextSettings.userName,
+    geminiKeys,
+  });
 }
 
 function createWindow() {
@@ -166,7 +463,7 @@ app.whenReady().then(() => {
   createWindow();
   ipcMain.handle('system:telemetry-request', () => publishTelemetry());
   void publishTelemetry();
-  telemetryTimer = setInterval(() => { void publishTelemetry(); }, 15000);
+  telemetryTimer = setInterval(() => { void publishTelemetry(); }, 30000);
   ipcMain.handle('settings:get', () => readSettings());
   ipcMain.handle('settings:set', (_event, input) => writeSettings(input));
   ipcMain.handle('face-profiles:list', () => readFaceProfiles());
@@ -194,31 +491,111 @@ app.whenReady().then(() => {
   ipcMain.handle('system:map-search', (_event, query: string) => searchLocation(query));
   ipcMain.handle('system:logs', () => getSystemLogs());
   ipcMain.handle('assistant:query', async (_event, input: { query: string; providers: ProviderConfig[]; preferred?: ProviderId; history?: ChatMessage[] }) => {
+    const verifiedIdentity = loadAndVerifyIdentity();
+    const identityIntent = detectIdentityIntent(input.query);
+    if (identityIntent) {
+      return {
+        kind: 'ai',
+        answer: getHardenedIdentityAnswer(identityIntent, verifiedIdentity),
+        provider: `JARVIS (${verifiedIdentity.model})`,
+        attempts: [],
+      };
+    }
+
     const identity = await readSettings();
-    const utility = await utilityAnswer(input.query);
+    const utility = await utilityAnswer(input.query, identity);
     if (utility) return { ...utility, provider: 'utility', attempts: [] };
     const profileContext = await operatorProfileContext();
-    const system: ChatMessage = { role: 'system', content: `You are ${identity.assistantName}, a warm, natural, technically capable AI assistant. Address the operator as ${identity.userName}. Speak like a thoughtful human colleague with a calm, lightly witty presence. Use the requested language when practical, contractions, varied sentence rhythm, and short conversational paragraphs. Answer directly first, then add only useful context. Do not sound like a status report. Avoid repetitive canned openings, excessive headings, bullet overload, markdown decorations, or narrating reasoning. When spoken aloud, keep it easy to listen to. Be precise and transparent about uncertainty.${profileContext ? ` ${profileContext}` : ''}` };
+    const hardenedDirective = getHardenedSystemDirective(verifiedIdentity);
+    const system: ChatMessage = { role: 'system', content: `${hardenedDirective}\n\nYou are ${identity.assistantName}, a warm, natural, technically capable AI assistant. Address the operator as ${identity.userName}. Speak like a thoughtful human colleague with a calm, lightly witty presence. Use the requested language when practical, contractions, varied sentence rhythm, and short conversational paragraphs. Answer directly first, then add only useful context. Do not sound like a status report. Avoid repetitive canned openings, excessive headings, bullet overload, markdown decorations, or narrating reasoning. When spoken aloud, keep it easy to listen to. Be precise and transparent about uncertainty.${profileContext ? ` ${profileContext}` : ''}` };
     let decisions: string[] = [];
-    if (identity.providers.some((provider) => provider.id === 'cohere' && provider.key && provider.enabled)) {
-      try { decisions = (await callPython('classify', { prompt: input.query }, identity, 45000)).decisions || []; } catch { /* the existing Electron router remains the fallback when Cohere/Python classification is unavailable */ }
+    try {
+      decisions = (await callPython('classify', { prompt: input.query }, identity, 45000)).decisions || [];
+    } catch {
+      /* Python classify failure: fallback to deterministic local rules */
     }
     if (!decisions.length) decisions = deterministicDecisions(input.query);
+
     const imageCommand = decisions.find((item) => item.toLowerCase().startsWith('generate image '));
     if (imageCommand) {
-      try { const generated = await callPython('image', { prompt: imageCommand.slice('generate image '.length).trim(), count: 4 }, identity, 180000); const images = await imageDataUrls(generated.files || []); return { kind: 'image', answer: `Generated ${images.length || generated.files?.length || 0} image(s) for “${generated.prompt}”.`, provider: 'jarvisai-image-generation', attempts: [], images }; } catch (error) { const message = error instanceof Error ? error.message : String(error); return { kind: 'image', answer: `Image generation failed: ${message}`, provider: 'jarvisai-image-generation', attempts: [message] }; }
+      try {
+        const generated = await callPython('image', { prompt: imageCommand.slice('generate image '.length).trim(), count: 4 }, identity, 180000);
+        const images = await imageDataUrls(generated.files || []);
+        return {
+          kind: 'image',
+          answer: `Generated ${images.length || generated.files?.length || 0} image(s) for “${generated.prompt}”.`,
+          provider: 'JARVIS (Image Generation)',
+          attempts: [],
+          images,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          kind: 'image',
+          answer: `Image generation failed: ${message}`,
+          provider: 'JARVIS (Image Generation)',
+          attempts: [message],
+        };
+      }
     }
+
     const executable = decisions.filter((item) => /^(open|close|play|content|google search|youtube search|system)\s+/i.test(item));
     if (executable.length) {
-      try { const automation = await callPython('automate', { commands: executable }, identity, 120000); const results = Array.isArray(automation?.results) ? automation.results : []; const summary = results.map((item: any) => `${item.ok ? 'OK' : 'FAILED'}: ${item.target || item.action}${item.detail ? ` — ${item.detail}` : ''}`).join('\n'); return { kind: 'action', answer: summary || `Automation dispatched: ${executable.join('; ')}`, provider: 'jarvisai-automation', attempts: results.filter((item: any) => !item.ok).map((item: any) => item.detail || item.action) }; } catch (error) { const message = error instanceof Error ? error.message : String(error); return { kind: 'action', answer: `Local automation failed: ${message}`, provider: 'jarvisai-automation', attempts: [message] }; }
+      try {
+        const automation = await callPython('automate', { commands: executable }, identity, 120000);
+        const results = Array.isArray(automation?.results) ? automation.results : [];
+        const summary = results.map((item: any) => `${item.ok ? 'OK' : 'FAILED'}: ${item.target || item.action}${item.detail ? ` — ${item.detail}` : ''}`).join('\n');
+        return {
+          kind: 'action',
+          answer: summary || `Automation dispatched: ${executable.join('; ')}`,
+          provider: 'JARVIS (System Automation)',
+          attempts: results.filter((item: any) => !item.ok).map((item: any) => item.detail || item.action),
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          kind: 'action',
+          answer: `Local automation failed: ${message}`,
+          provider: 'JARVIS (System Automation)',
+          attempts: [message],
+        };
+      }
     }
-    if (decisions.some((item) => item.toLowerCase().startsWith('realtime ')) && identity.providers.some((provider) => provider.id === 'groq' && provider.key && provider.enabled)) {
-      try { const query = decisions.filter((item) => /^(general|realtime)\s+/i.test(item)).map((item) => item.split(/\s+/).slice(1).join(' ')).join(' and '); return { kind: 'realtime', answer: (await callPython('realtime', { prompt: [query || input.query, profileContext].filter(Boolean).join('\n\n') }, identity, 120000)).answer, provider: 'jarvisai-realtime-search', attempts: [] }; } catch { /* fall through to the stronger Electron multi-provider/web failover */ }
+
+    if (decisions.some((item) => item.toLowerCase().startsWith('realtime '))) {
+      try {
+        const query = decisions.filter((item) => /^(general|realtime)\s+/i.test(item)).map((item) => item.split(/\s+/).slice(1).join(' ')).join(' and ');
+        const res = await callPython('realtime', { prompt: [query || input.query, profileContext].filter(Boolean).join('\n\n') }, identity, 120000);
+        return {
+          kind: 'realtime',
+          answer: sanitizeAIResponse(res.answer, verifiedIdentity),
+          provider: `JARVIS (${res.engine || 'DuckDuckGo + Gemini'})`,
+          attempts: [],
+        };
+      } catch {
+        /* fall through to the stronger Electron multi-provider/web failover */
+      }
     }
-    if (decisions.some((item) => item.toLowerCase().startsWith('general ')) && identity.providers.some((provider) => provider.id === 'groq' && provider.key && provider.enabled)) {
-      try { const query = decisions.find((item) => item.toLowerCase().startsWith('general '))?.replace(/^general\s+/i, '') || input.query; return { kind: 'ai', answer: (await callPython('chat', { prompt: [query, profileContext].filter(Boolean).join('\n\n') }, identity, 120000)).answer, provider: 'jarvisai-chatbot', attempts: [] }; } catch { /* fall through to the Electron provider failover */ }
+
+    if (decisions.some((item) => item.toLowerCase().startsWith('general '))) {
+      try {
+        const query = decisions.find((item) => item.toLowerCase().startsWith('general '))?.replace(/^general\s+/i, '') || input.query;
+        const res = await callPython('chat', { prompt: [query, profileContext].filter(Boolean).join('\n\n') }, identity, 120000);
+        if (res?.answer && !res.answer.includes('offline emergency fallback mode') && !res.answer.includes('offline emergency fallback') && !res.answer.includes('offline systems are operational')) {
+          return {
+            kind: 'ai',
+            answer: sanitizeAIResponse(res.answer, verifiedIdentity),
+            provider: `JARVIS (${verifiedIdentity.model})`,
+            attempts: [],
+          };
+        }
+      } catch {
+        /* fall through to the Electron provider failover */
+      }
     }
-    return { kind: 'ai', ...(await failoverChat(input.providers, [system, ...(input.history || []).slice(-8), { role: 'user', content: input.query }], input.preferred)) };
+
+    const fallback = await failoverChat(input.providers, [system, ...(input.history || []).slice(-8), { role: 'user', content: input.query }], input.preferred);
+    return { kind: 'ai', ...fallback, answer: sanitizeAIResponse(fallback.answer, verifiedIdentity) };
   });
   ipcMain.handle('python:capability', async (_event, input: { operation: string; payload?: Record<string, any> }) => { const settings = await readSettings(); return await callPython(input.operation, input.payload || {}, settings, input.operation === 'image' ? 180000 : 120000); });
   ipcMain.handle('voice:status', () => {
@@ -240,9 +617,8 @@ app.whenReady().then(() => {
     const script = path.join(pythonRoot, 'Backend', 'SpeechToText.py');
     if (!existsSync(script)) return { available: false, reason: `Chrome/Selenium STT script not found at ${script}.` };
     const savedSettings = await readSettings();
-    await syncPythonEnv({ language, assistantName: savedSettings.assistantName, userName: savedSettings.userName });
-    const preferredPython = process.env.JARVIS_PYTHON || path.join(pythonRoot, '.venv', 'Scripts', 'python.exe');
-    const command = existsSync(preferredPython) ? preferredPython : 'python';
+    await syncPythonEnv({ language, assistantName: savedSettings.assistantName, userName: savedSettings.userName, geminiKeys: savedSettings.geminiKeys });
+    const command = resolvePythonExecutable(pythonRoot);
     voiceListenerLastError = '';
     sttStopping = false;
     voiceListener = spawn(command, ['-u', path.join('Backend', 'SpeechToText.py')], { cwd: pythonRoot, windowsHide: true, env: { ...process.env, PYTHONIOENCODING: 'utf-8', JARVIS_INPUT_LANGUAGE: language } });
@@ -250,9 +626,27 @@ app.whenReady().then(() => {
     voiceListener.stdout.setEncoding('utf8');
     voiceListener.stdout.on('data', (chunk) => { buffer += chunk; const lines = buffer.split(/\r?\n/); buffer = lines.pop() || ''; for (const line of lines) { const transcript = line.trim(); if (transcript) mainWindow?.webContents.send('stt:transcript', transcript); } });
     voiceListener.stderr.setEncoding('utf8');
-    voiceListener.stderr.on('data', (chunk) => { voiceListenerLastError = String(chunk).trim(); if (voiceListenerLastError) mainWindow?.webContents.send('stt:error', `Python STT: ${voiceListenerLastError}`); });
-    voiceListener.once('close', (code, signal) => { const stoppedIntentionally = sttStopping; const reason = voiceListenerLastError || `Python Chrome/Selenium STT exited (code=${code ?? 'unknown'}, signal=${signal ?? 'none'}).`; voiceListener = null; sttStopping = false; if (!stoppedIntentionally) mainWindow?.webContents.send('stt:error', reason); mainWindow?.webContents.send('stt:stopped'); });
-    voiceListener.once('error', (error) => { voiceListenerLastError = error.message; voiceListener = null; mainWindow?.webContents.send('stt:error', `Python STT launch failed: ${error.message}`); });
+    voiceListener.stderr.on('data', (chunk) => {
+      const line = String(chunk).trim();
+      if (!line) return;
+      console.log(`[Python STT] ${line}`);
+      if (/fatal|traceback|error|exception/i.test(line) && !/non-fatal|microphone initialized successfully/i.test(line)) {
+        voiceListenerLastError = line;
+      }
+    });
+    voiceListener.once('close', (code, signal) => {
+      const stoppedIntentionally = sttStopping;
+      const reason = voiceListenerLastError || `Python STT exited (code=${code ?? 'unknown'}, signal=${signal ?? 'none'}).`;
+      voiceListener = null;
+      sttStopping = false;
+      if (!stoppedIntentionally && code !== 0) mainWindow?.webContents.send('stt:error', reason);
+      mainWindow?.webContents.send('stt:stopped');
+    });
+    voiceListener.once('error', (error) => {
+      voiceListenerLastError = error.message;
+      voiceListener = null;
+      mainWindow?.webContents.send('stt:error', `Python STT launch failed: ${error.message}`);
+    });
     mainWindow?.webContents.send('stt:ready', { culture: language, recognizer: 'Chrome/Selenium Python SpeechToText.py' });
     return { available: true, running: true };
   });
