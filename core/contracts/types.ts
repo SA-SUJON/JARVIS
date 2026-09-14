@@ -14,6 +14,7 @@ export type TaskStatus =
   | "awaiting_approval"
   | "running"
   | "verifying"
+  | "replanning"
   | "completed"
   | "failed"
   | "cancelled";
@@ -167,6 +168,17 @@ export interface TaskResultReference {
   $ref: string;
 }
 
+export type RecoveryAction = "retry_step" | "abort";
+
+export interface TaskRecoveryState {
+  maxAttemptsPerStep: number;
+  attemptsByStep: Record<string, number>;
+  lastFailure?: {
+    stepId: string;
+    reason: string;
+  };
+}
+
 export interface Task {
   id: string;
   requestId: string;
@@ -178,6 +190,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   workingContext?: TaskWorkingContext;
+  recovery?: TaskRecoveryState;
   result?: unknown;
   error?: string;
 }
