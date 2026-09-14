@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { ApprovalManager } from "../core/policy/ApprovalManager.js";
 import { RuntimeKernel } from "../core/runtime/RuntimeKernel.js";
+import { mkdir, writeFile, rm } from "node:fs/promises";
+import path from "node:path";
 
 const task = (overrides: Partial<Parameters<ApprovalManager["create"]>[0]> = {}) => ({
   id: "task-approval-test",
@@ -52,23 +54,33 @@ test.describe("MARK_05 approval lifecycle", () => {
     expect(runtime.listApprovals()).toHaveLength(1);
   });
 
-  test("approved execution resumes the exact pending task", async () => {
+  test("approved execution runs the exact pending task through its bound tool", async () => {
     const runtime = new RuntimeKernel();
-    const initial = await runtime.execute({ input: "delete the old project files" });
-    const approvalId = initial.approval?.id;
+    const relativePath = path.join("tests", ".mark05-approval-delete-check.txt");
+    const target = path.resolve(process.env.JARVIS_WORKSPACE || process.cwd(), relativePath);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, "MARK_05 approval execution test", "utf8");
 
-    expect(initial.status).toBe("awaiting_approval");
-    expect(approvalId).toBeTruthy();
+    try {
+      const initial = await runtime.execute({ input: `delete file ${relativePath}` });
+      const approvalId = initial.approval?.id;
 
-    const approved = runtime.approve(approvalId!);
-    expect(approved.status).toBe("approved");
+      expect(initial.status).toBe("awaiting_approval");
+      expect(approvalId).toBeTruthy();
+      expect(initial.task.steps[0]?.toolId).toBe("filesystem.delete_file");
 
-    const resumed = await runtime.executeApproved(approvalId!);
-    expect(resumed.requestId).toBe(initial.requestId);
-    expect(resumed.task.id).toBe(initial.task.id);
-    expect(resumed.task.goal).toBe(initial.task.goal);
-    expect(resumed.status).toBe("failed");
-    expect(resumed.error).toContain("no state-changing execution tool");
-    expect(runtime.listApprovals()).toHaveLength(0);
+      const approved = runtime.approve(approvalId!);
+      expect(approved.status).toBe("approved");
+
+      const resumed = await runtime.executeApproved(approvalId!);
+      expect(resumed.requestId).toBe(initial.requestId);
+      expect(resumed.task.id).toBe(initial.task.id);
+      expect(resumed.task.goal).toBe(initial.task.goal);
+      expect(resumed.status).toBe("completed");
+      expect(resumed.toolResult).toMatchObject({ operation: "delete" });
+      expect(runtime.listApprovals()).toHaveLength(0);
+    } finally {
+      await rm(target, { force: true });
+    }
   });
 });
