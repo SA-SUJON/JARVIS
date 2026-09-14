@@ -1,4 +1,4 @@
-import type { ModelInfo, Provider, ProviderRequest, ProviderResponse } from "../core/contracts/types.js";
+import type { ModelInfo, Provider, ProviderResponse } from "../core/contracts/types.js";
 
 export type ProviderId =
   | "openai"
@@ -41,7 +41,7 @@ export interface ProviderRuntime {
 }
 
 export interface ProviderFactory {
-  create(definition: ProviderDefinition, credentials: ProviderCredentials): Provider;
+  create(definition: ProviderDefinition, credentials: ProviderCredentials): import("../core/contracts/types.js").Provider;
 }
 
 export interface ModelRouteRequest {
@@ -71,7 +71,7 @@ export interface ProviderManagerOptions {
 }
 
 export interface RoutedProvider {
-  provider: Provider;
+  provider: import("../core/contracts/types.js").Provider;
   definition: ProviderDefinition;
   model: string;
   score: number;
