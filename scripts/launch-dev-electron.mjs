@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 
 const root = process.cwd();
-const entry = `${root}/dist-electron/main.js`;
+const entry = `${root}/dist-electron/electron/main.js`;
 const viteUrl = process.env.VITE_DEV_SERVER_URL || 'http://127.0.0.1:5173';
 const deadline = Date.now() + 30000;
 
