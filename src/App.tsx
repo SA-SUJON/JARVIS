@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Activity, Bot, ChevronDown, Cpu, Globe2, Headphones, Keyboard, KeyRound, Link2, LockKeyhole, Maximize2, MessageSquare, Mic, Mic2, Minus, Network, Plus, Radio, RefreshCw, ScanFace, Send, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, Volume2, X, Zap } from 'lucide-react';
 import { CURATED_MODELS, DEFAULT_PROVIDERS, VOICES, VOICE_PROFILES, type ChatMessage, type ModelInfo, type ProviderConfig, type ProviderId, type VoiceProfile } from './types';
+import './approval.css';
 import Mark04, { AudioAnalysis } from './Mark04';
 import { EDGE_VOICES } from './edgeVoices';
 import FaceRecognition, { type FaceProfile } from './FaceRecognition';
@@ -9,6 +10,18 @@ import HolographicScanner from './HolographicScanner';
 
 
 const initialMessages: ChatMessage[] = [{ role: 'assistant', content: 'Hi, Sir. JARVIS Is Available', provider: 'local', timestamp: 'NOW' }];
+
+type PendingApproval = {
+  id: string;
+  requestId: string;
+  taskId: string;
+  summary: string;
+  authority: number;
+  risk: 'low' | 'medium' | 'high' | 'critical';
+  createdAt: string;
+  expiresAt: string;
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
+};
 
 function wakeWordMatch(text: string, assistantName: string) {
   const escaped = assistantName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -63,6 +76,8 @@ function App() {
   const [selectedProvider, setSelectedProvider] = useState<ProviderId | undefined>();
   const [toast, setToast] = useState('');
   const [voiceStatus, setVoiceStatus] = useState({ nativeListen: false, piper: false, kokoro: false, edge: true, note: 'Checking voice runtime...' });
+  const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
+  const [approvalBusy, setApprovalBusy] = useState(false);
   const chatEnd = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const commandModeRef = useRef(false);
@@ -95,6 +110,7 @@ function App() {
       setVoiceEnabled(settings.voiceEnabled);
     });
     void window.jarvis.voiceStatus().then(setVoiceStatus);
+    void window.jarvis.listApprovals().then((approvals) => setPendingApproval(approvals[0] || null)).catch(() => undefined);
   }, []);
   useEffect(() => {
     const removeTelemetry = window.jarvis.onSystemTelemetry((payload) => setLiveTelemetry((current) => ({ ...current, ...payload })));
@@ -147,11 +163,41 @@ function App() {
   const refreshModels = useCallback(async () => {
     setModelStatus('SCANNING_NEURAL_LINKS'); const available: ModelInfo[] = []; for (const provider of providers.filter((p) => p.key && p.enabled)) { try { const found = await window.jarvis.listModels(provider); available.push(...found); } catch { /* one provider failing must not block discovery */ } } setModels(available); setProviders((current) => current.map((provider) => { const first = available.find((model) => model.provider === provider.id); return first && !provider.model ? { ...provider, model: first.id } : provider; })); setModelStatus(`${available.length}_MODELS_INDEXED`);
   }, [providers]);
+  async function speakAnswer(answer: string) {
+    if (!voiceEnabled) return;
+    const spoken = await window.jarvis.speak({ text: answer, voice, language, voiceProfile });
+    if (spoken.dataUrl) { const player = new Audio(spoken.dataUrl); player.volume = 1; setSpeaking(true); player.onended = () => { setSpeaking(false); player.remove(); }; player.onerror = () => setSpeaking(false); await player.play(); }
+    else if (spoken.error) { setToast(`VOICE_UNAVAILABLE // ${spoken.error.slice(0, 90)}`); setTimeout(() => setToast(''), 4500); }
+  }
   async function send(text = draft) {
-    const query = text.trim(); if (!query || thinking) return; setDraft(''); setListening(false); setMessages((current) => [...current, { role: 'user', content: query, timestamp: 'NOW' }]); setThinking(true);
-    try { const result = await window.jarvis.query({ query, providers, preferred: selectedProvider, history: messages }); const next: ChatMessage = { role: 'assistant', content: result.answer, provider: result.provider.toUpperCase(), timestamp: 'NOW', images: result.images }; setMessages((current) => [...current, next]); if (voiceEnabled) { const spoken = await window.jarvis.speak({ text: result.answer, voice, language, voiceProfile }); if (spoken.dataUrl) { const player = new Audio(spoken.dataUrl); player.volume = 1; setSpeaking(true); player.onended = () => { setSpeaking(false); player.remove(); }; player.onerror = () => setSpeaking(false); await player.play(); } else if (spoken.error) { setToast(`VOICE_UNAVAILABLE // ${spoken.error.slice(0, 90)}`); setTimeout(() => setToast(''), 4500); } } }
+    const query = text.trim(); if (!query || thinking || approvalBusy) return; setDraft(''); setListening(false); setMessages((current) => [...current, { role: 'user', content: query, timestamp: 'NOW' }]); setThinking(true);
+    try { const result = await window.jarvis.query({ query, providers, preferred: selectedProvider, history: messages }); const next: ChatMessage = { role: 'assistant', content: result.answer, provider: result.provider.toUpperCase(), timestamp: 'NOW', images: result.images }; setMessages((current) => [...current, next]); if (result.requiresApproval && result.approval) setPendingApproval(result.approval); await speakAnswer(result.answer); }
     catch (error) { setMessages((current) => [...current, { role: 'assistant', content: error instanceof Error ? error.message : 'Neural link unavailable.', provider: 'FAILOVER', timestamp: 'ERR' }]); }
     finally { setThinking(false); }
+  }
+  async function executeApproved() {
+    if (!pendingApproval || approvalBusy) return;
+    setApprovalBusy(true);
+    try {
+      const approved = await window.jarvis.approveApproval(pendingApproval.id);
+      setPendingApproval(approved);
+      const result = await window.jarvis.executeApprovedApproval(approved.id);
+      const next: ChatMessage = { role: 'assistant', content: result.answer, provider: result.provider.toUpperCase(), timestamp: 'NOW', images: result.images };
+      setMessages((current) => [...current, next]);
+      setPendingApproval(null);
+      await speakAnswer(result.answer);
+    } catch (error) {
+      setToast(`APPROVAL_EXECUTION_FAILED // ${error instanceof Error ? error.message : String(error)}`);
+      setTimeout(() => setToast(''), 6000);
+      try { const approvals = await window.jarvis.listApprovals(); setPendingApproval(approvals[0] || null); } catch { setPendingApproval(null); }
+    } finally { setApprovalBusy(false); }
+  }
+  async function rejectPendingApproval() {
+    if (!pendingApproval || approvalBusy) return;
+    setApprovalBusy(true);
+    try { await window.jarvis.rejectApproval(pendingApproval.id); setPendingApproval(null); setToast('APPROVAL_REJECTED // ACTION_NOT_EXECUTED'); setTimeout(() => setToast(''), 3500); }
+    catch (error) { setToast(`APPROVAL_REJECT_FAILED // ${error instanceof Error ? error.message : String(error)}`); setTimeout(() => setToast(''), 5000); }
+    finally { setApprovalBusy(false); }
   }
   const toggleVoiceInput = useCallback(async () => {
     const next = !listening; commandModeRef.current = next; setListening(next); if (next) { const result = await window.jarvis.sttStart(language); if (!result.available) { setListening(false); commandModeRef.current = false; setToast(`NATIVE_MIC_UNAVAILABLE // ${result.reason || 'Windows speech recognition unavailable.'}`); } else { setToast('PYTHON_STT_ACTIVE // SPEAK_COMMAND'); } } else { if (!wakeWord) await window.jarvis.sttStop(); setToast('MIC_STANDBY'); } setTimeout(() => setToast(''), 3500);
@@ -163,9 +209,15 @@ function App() {
       <div className="unified-layout"><section className="unified-core"><div className="unified-section-label"><span className="eyebrow">[ PRIMARY_CORE // DIALOGUE ]</span><span>ONE CANONICAL CHAT CHANNEL</span></div><div className="dashboard-grid"><Panel className="core-panel" scan><div className="panel-head"><span className="eyebrow">[ PRIMARY_CORE_OUTPUT ]</span><span className="data">STATUS: <b className="tone-cyan">OPTIMAL</b></span></div><div className="core-visual"><Gauge value={liveTelemetry.diagnostics?.battery?.available && liveTelemetry.diagnostics.battery.percent != null ? liveTelemetry.diagnostics.battery.percent : null} /><div className="telemetry"><div><span>TEMP</span><b>{liveTelemetry.diagnostics?.temperature?.mainCelsius != null ? `${liveTelemetry.diagnostics.temperature.mainCelsius}°C` : 'SENSOR_NA'}</b></div><div><span>VOLTAGE</span><b>{liveTelemetry.diagnostics?.battery?.voltage ? `${liveTelemetry.diagnostics.battery.voltage.toFixed(2)} V` : liveTelemetry.diagnostics?.battery?.available ? '—' : 'AC_INPUT'}</b></div><div><span>HEALTH</span><b>{liveTelemetry.diagnostics?.battery?.healthPercent ? `${Math.round(liveTelemetry.diagnostics.battery.healthPercent)}%` : liveTelemetry.diagnostics?.battery?.available ? '—' : 'HOST_AC'}</b></div></div></div><div className="core-foot"><span><Activity size={14} /> RESPONSE PIPELINE</span><b>{activeProvider?.name || 'LOCAL UTILITY ROUTER'}</b></div><div className="core-power-strip"><div className="core-power-heading"><span><Zap size={14} /> POWER_CORE</span><b>{liveTelemetry.diagnostics?.battery?.acConnected || liveTelemetry.diagnostics?.battery?.charging ? 'NUCLEAR_ENERGY' : 'BATTERY'}</b></div><div className="core-power-meter"><i style={{ width: `${liveTelemetry.diagnostics?.battery?.available ? Math.min(100, Math.max(0, liveTelemetry.diagnostics.battery.percent || 0)) : 0}%` }} /></div><div className="core-power-stats"><span>LEVEL<b>{liveTelemetry.diagnostics?.battery?.available && liveTelemetry.diagnostics.battery.percent != null ? `${Math.round(liveTelemetry.diagnostics.battery.percent)}%` : 'NO_SENSOR'}</b></span><span>VOLTAGE<b>{liveTelemetry.diagnostics?.battery?.voltage ? `${liveTelemetry.diagnostics.battery.voltage.toFixed(2)} V` : '—'}</b></span><span>CURRENT<b>{liveTelemetry.diagnostics?.battery?.currentMilliAmps ? `${Math.round(liveTelemetry.diagnostics.battery.currentMilliAmps)} mA` : '—'}</b></span><span>CAPACITY<b>{liveTelemetry.diagnostics?.battery?.currentCapacity ? `${Math.round(liveTelemetry.diagnostics.battery.currentCapacity / 1000)} / ${Math.round((liveTelemetry.diagnostics.battery.designedCapacity || 0) / 1000)} mWh` : '—'}</b></span><span>HEALTH<b>{liveTelemetry.diagnostics?.battery?.healthPercent ? `${Math.round(liveTelemetry.diagnostics.battery.healthPercent)}%` : '—'}</b></span><span>STATE<b>{liveTelemetry.diagnostics?.battery?.available ? (liveTelemetry.diagnostics.battery.charging ? 'CHARGING' : 'DISCHARGING') : 'DESKTOP_AC'}</b></span></div></div></Panel>
         <div className="right-stack"><Panel className="diagnostic-panel" scan><div className="panel-head"><span className="eyebrow">[ CORE_DIAGNOSTICS ]</span><span className="data">{liveTelemetry.diagnostics?.telemetrySource || 'TELEMETRY_PROBING'}</span></div><div className="meters"><Meter label="CPU_USAGE" value={liveTelemetry.diagnostics?.cpu?.usagePercent || 0} color="blue" /><Meter label="MEMORY_USAGE" value={liveTelemetry.diagnostics?.memory?.usagePercent || 0} color="cyan" /><Meter label="STORAGE_USAGE" value={liveTelemetry.diagnostics?.storage?.[0]?.usagePercent || 0} color="purple" /></div><div className="diagnostic-detail-grid"><span>CPU<b>{liveTelemetry.diagnostics?.cpu?.model || 'COLLECTING'}</b></span><span>GPU<b>{liveTelemetry.diagnostics?.gpu?.[0]?.model || 'NO_GPU_DATA'}</b></span><span>MEMORY<b>{liveTelemetry.diagnostics?.memory?.usedBytes ? `${(liveTelemetry.diagnostics.memory.usedBytes / 1073741824).toFixed(1)} / ${(liveTelemetry.diagnostics.memory.totalBytes / 1073741824).toFixed(1)} GB` : '—'}</b></span><span>STORAGE<b>{liveTelemetry.diagnostics?.storage?.[0]?.sizeBytes ? `${(liveTelemetry.diagnostics.storage[0].usedBytes / 1073741824).toFixed(1)} / ${(liveTelemetry.diagnostics.storage[0].sizeBytes / 1073741824).toFixed(1)} GB` : '—'}</b></span><span>WI-FI<b>{liveTelemetry.diagnostics?.wifi?.[0]?.ssid || liveTelemetry.diagnostics?.wifi?.[0]?.description || liveTelemetry.diagnostics?.wifi?.[0]?.iface || 'NO_WIFI_LINK'}</b></span><span>BLUETOOTH<b>{liveTelemetry.diagnostics?.bluetooth?.filter((item: any) => item.connected).length || 0} CONNECTED</b></span><span>THERMAL<b>{liveTelemetry.diagnostics?.temperature?.mainCelsius != null ? `${liveTelemetry.diagnostics.temperature.mainCelsius}°C` : 'SENSOR_NA'}</b></span><span>UPTIME<b>{liveTelemetry.diagnostics?.device?.uptimeSeconds ? `${Math.floor(liveTelemetry.diagnostics.device.uptimeSeconds / 3600)}H ${Math.floor(liveTelemetry.diagnostics.device.uptimeSeconds / 60) % 60}M` : '—'}</b></span><span>SOURCE<b>{liveTelemetry.diagnostics?.telemetrySource || 'PROBING'}</b></span><span>ACCESS<b>{liveTelemetry.diagnostics?.access?.administratorRequired ? 'ADMIN_REQUIRED' : 'STANDARD_USER'}</b></span></div><div className="diagnostic-network-details"><div className="diagnostic-network-head"><span>NETWORK_DETAILS</span><b>{liveTelemetry.network?.latencyMs != null ? `${liveTelemetry.network.latencyMs} ms PING` : 'PING_NA'}</b></div><div className="diagnostic-network-summary"><span>PUBLIC_IP<b>{liveTelemetry.network?.publicIp || '—'}</b></span><span>INTERFACES<b>{liveTelemetry.network?.interfaces?.length || 0}</b></span><span>CONNECTIONS<b>{liveTelemetry.network?.connections?.length || 0}</b></span></div><div className="diagnostic-interface-list">{(liveTelemetry.network?.interfaces || []).slice(0, 4).map((item: any) => <div key={`${item.iface}-${item.mac}`}><b>{item.iface || 'IFACE'}</b><span>{item.ip4 || 'NO_IPV4'} // {item.mac || 'NO_MAC'}</span><em>{item.operstate || 'UNKNOWN'}</em></div>)}</div></div></Panel></div>
         <Panel className="chat-panel" scan>
-          <div className="panel-head"><span className="eyebrow"><MessageSquare size={14} /> [ JARVIS_DIALOGUE ]</span><div className="chat-tools"><span className="data">{thinking ? 'PROCESSING' : 'READY'}</span><button onClick={() => setMessages(initialMessages)} aria-label="clear chat"><RefreshCw size={14} /></button></div></div>
-          <div className="chat-stream" ref={chatStreamRef}>{messages.map((message, index) => <motion.div key={`${message.timestamp}-${index}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`message ${message.role}`}><div className="message-meta"><span>{message.role === 'assistant' ? assistantName : userName}</span><small>{message.provider || 'LOCAL'} // {message.timestamp}</small></div><p>{message.content}</p>{message.images?.length ? <div className="message-images">{message.images.map((image, imageIndex) => <img key={`${message.timestamp}-${imageIndex}`} src={image} alt={`Generated result ${imageIndex + 1}`} />)}</div> : null}</motion.div>)}{thinking && <div className="thinking"><span /><span /><span /> JARVIS IS SYNTHESIZING</div>}<div ref={chatEnd} /></div>
-          <div className="composer"><button className={listening ? 'mic active' : 'mic'} onClick={toggleVoiceInput} aria-label="toggle listening"><Mic2 size={17} /></button><button className={scannerActive ? 'mic active' : 'mic'} onClick={() => setScannerActive(!scannerActive)} aria-label="toggle scanner" title="Toggle Biometric Scanner"><ScanFace size={17} /></button><input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onComposerKey} placeholder="ENTER COMMAND // ASK JARVIS ANYTHING" /><button className="send" onClick={() => void send()} aria-label="send command"><Send size={16} /></button></div>
+          <div className="panel-head"><span className="eyebrow"><MessageSquare size={14} /> [ JARVIS_DIALOGUE ]</span><div className="chat-tools"><span className="data">{pendingApproval ? 'APPROVAL_PENDING' : thinking ? 'PROCESSING' : 'READY'}</span><button onClick={() => setMessages(initialMessages)} aria-label="clear chat"><RefreshCw size={14} /></button></div></div>
+          <div className="chat-stream" ref={chatStreamRef}>{messages.map((message, index) => <motion.div key={`${message.timestamp}-${index}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`message ${message.role}`}><div className="message-meta"><span>{message.role === 'assistant' ? assistantName : userName}</span><small>{message.provider || 'LOCAL'} // {message.timestamp}</small></div><p>{message.content}</p>{message.images?.length ? <div className="message-images">{message.images.map((image, imageIndex) => <img key={`${message.timestamp}-${imageIndex}`} src={image} alt={`Generated result ${imageIndex + 1}`} /> : null}</div> : null}</motion.div>)}{thinking && <div className="thinking"><span /><span /><span /> JARVIS IS SYNTHESIZING</div>}<div ref={chatEnd} /></div>
+          <AnimatePresence initial={false}>{pendingApproval?.status === 'pending' && <motion.div className="approval-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+            <div className="approval-header"><div><span className="eyebrow">[ SECURITY_GATE // HUMAN_APPROVAL ]</span><strong>AUTHORIZE STATE-CHANGING ACTION</strong></div><ShieldCheck size={18} /></div>
+            <p className="approval-summary">{pendingApproval.summary}</p>
+            <div className="approval-meta"><span>RISK<b className="tone-red">{pendingApproval.risk.toUpperCase()}</b></span><span>AUTHORITY<b>{pendingApproval.authority}</b></span><span>EXPIRES<b>{new Date(pendingApproval.expiresAt).toLocaleTimeString()}</b></span></div>
+            <div className="approval-actions"><button className="approval-reject" onClick={() => void rejectPendingApproval()} disabled={approvalBusy}><X size={14} /> REJECT</button><button className="approval-approve" onClick={() => void executeApproved()} disabled={approvalBusy}><ShieldCheck size={14} /> {approvalBusy ? 'EXECUTING...' : 'APPROVE & CONTINUE'}</button></div>
+          </motion.div>}</AnimatePresence>
+          <div className="composer"><button className={listening ? 'mic active' : 'mic'} onClick={toggleVoiceInput} aria-label="toggle listening"><Mic2 size={17} /></button><button className={scannerActive ? 'mic active' : 'mic'} onClick={() => setScannerActive(!scannerActive)} aria-label="toggle scanner" title="Toggle Biometric Scanner"><ScanFace size={17} /></button><input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onComposerKey} placeholder="ENTER COMMAND // ASK JARVIS ANYTHING" disabled={approvalBusy} /><button className="send" onClick={() => void send()} aria-label="send command" disabled={approvalBusy}><Send size={16} /></button></div>
         </Panel>
         <AudioAnalysis listening={listening} speaking={speaking} />
       </div></section>
