@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import type { Tool, ToolContext } from "../../core/contracts/types.js";
@@ -59,6 +59,32 @@ export const openAppTool: Tool = {
   },
 };
 
+export const readTextFileTool: Tool = {
+  definition: {
+    id: "filesystem.read_text",
+    name: "Read text file",
+    description: "Read a UTF-8 text file inside the configured JARVIS workspace without modifying it.",
+    authority: 1,
+    risk: "low",
+    argumentSchema: {
+      type: "object",
+      properties: { path: { type: "string", description: "Workspace-relative source path." } },
+      required: ["path"],
+      additionalProperties: false,
+    },
+  },
+  async execute(input, _context: ToolContext) {
+    const relativePath = String(input.path ?? "").trim();
+    if (!relativePath) throw new Error("A workspace-relative file path is required.");
+    const target = workspacePath(relativePath);
+    const content = await readFile(target, { encoding: "utf8" });
+    const bytes = Buffer.byteLength(content, "utf8");
+    if (bytes > MAX_TEXT_BYTES) throw new Error(`Text payload exceeds the ${MAX_TEXT_BYTES} byte safety limit.`);
+    const sha256 = createHash("sha256").update(Buffer.from(content, "utf8")).digest("hex");
+    return { path: path.relative(WORKSPACE_ROOT, target), content, bytes, sha256, operation: "read" };
+  },
+};
+
 export const writeTextFileTool: Tool = {
   definition: {
     id: "filesystem.write_text",
@@ -113,4 +139,4 @@ export const deleteFileTool: Tool = {
   },
 };
 
-export const controlledTools: Tool[] = [openAppTool, writeTextFileTool, deleteFileTool];
+export const controlledTools: Tool[] = [openAppTool, readTextFileTool, writeTextFileTool, deleteFileTool];
