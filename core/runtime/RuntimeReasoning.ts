@@ -1,7 +1,7 @@
-import type { ProviderResponse, Task } from "../contracts/types.js";
-import type { ModelRouteRequest, ProviderId } from "../../providers/types.js";
+import type { Task } from "../contracts/types.js";
+import type { ProviderId } from "../../providers/types.js";
 import { FailoverManager } from "../../providers/FailoverManager.js";
-import { TaskReasoningEngine, type ReasoningProposal } from "./TaskReasoningEngine.js";
+import { parseReasoningProposal, TaskReasoningEngine, type ReasoningProposal } from "./TaskReasoningEngine.js";
 
 export interface RuntimeReasoningRequest {
   requestId: string;
@@ -10,20 +10,20 @@ export interface RuntimeReasoningRequest {
   maxTokens?: number;
 }
 
-/** Runs bounded model reasoning over verified task state without executing the proposal. */
+/** Runs bounded model reasoning over task state without executing the proposal. */
 export class RuntimeReasoning {
   readonly engine: TaskReasoningEngine;
 
   constructor(private readonly failover: FailoverManager) {
     this.engine = new TaskReasoningEngine({
-      generate: async (prompt): Promise<ProviderResponse> => {
-        const result = await this.failover.execute(
-          { requestId: crypto.randomUUID(), prompt, maxTokens: 1000 },
+      async generate(prompt) {
+        const result = await failover.execute(
           {
-            preferredProvider: undefined,
-            preferredModel: undefined,
-            taskType: "reasoning",
+            requestId: crypto.randomUUID(),
+            prompt,
+            maxTokens: 1000,
           },
+          { taskType: "reasoning" },
         );
         return result.response;
       },
@@ -41,10 +41,10 @@ export class RuntimeReasoning {
         preferredProvider: request.preferredProvider,
         preferredModel: request.preferredModel,
         taskType: "reasoning",
-      } satisfies Omit<ModelRouteRequest, "prompt">,
+      },
     );
 
-    return this.engine.parseReasoningResponse(result.response.content);
+    return parseReasoningProposal(result.response.content);
   }
 
   private enginePrompt(task: Task): string {
