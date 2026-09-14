@@ -1,5 +1,6 @@
 import type { ModelInfo } from "../core/contracts/types.js";
-import type { ProviderId, ProviderManager } from "./index.js";
+import type { ProviderId } from "./types.js";
+import { ProviderManager } from "./ProviderManager.js";
 
 export class ModelRegistry {
   private readonly models = new Map<string, ModelInfo>();
@@ -24,7 +25,7 @@ export class ModelRegistry {
       try {
         this.registerMany(await this.providerManager.listModels(providerId));
       } catch {
-        // A single provider failing model discovery must not stop the registry refresh.
+        // One provider failing discovery must not stop the global registry refresh.
       }
     }
     return this.list();
