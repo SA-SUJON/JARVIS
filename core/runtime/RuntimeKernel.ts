@@ -14,6 +14,7 @@ import { FailoverManager } from "../../providers/FailoverManager.js";
 import { ModelRegistry } from "../../providers/ModelRegistry.js";
 import { ModelRouter } from "../../providers/ModelRouter.js";
 import { ProviderManager } from "../../providers/ProviderManager.js";
+import { createBuiltinTools } from "../../tools/builtin/index.js";
 import { ToolExecutor } from "../../tools/ToolExecutor.js";
 import { ToolRegistry } from "../../tools/ToolRegistry.js";
 
@@ -41,6 +42,7 @@ export interface RuntimeExecutionResult {
   model?: string;
   approval?: ApprovalRequest;
   error?: string;
+  toolResult?: unknown;
 }
 
 type PendingApprovalExecution = {
@@ -73,6 +75,7 @@ export class RuntimeKernel {
     this.modelRegistry = new ModelRegistry(this.providers);
     this.failover = new FailoverManager(this.providers, this.modelRouter);
     this.tools = options.tools ?? new ToolRegistry();
+    if (!options.tools) this.tools.registerMany(createBuiltinTools());
     this.toolExecutor = new ToolExecutor(this.tools, this.events);
     this.orchestrator = new Orchestrator({
       events: this.events,
@@ -185,9 +188,45 @@ export class RuntimeKernel {
   ): Promise<RuntimeExecutionResult> {
     task.status = "running";
     task.updatedAt = new Date().toISOString();
+    const step = task.steps[0];
 
-    // MARK_05 must never turn an approval into a hallucinated side effect.
-    // State-changing tasks stay inert until a concrete, policy-bound tool is registered.
+    if (step?.toolId) {
+      const context: ToolContext = {
+        requestId,
+        taskId: task.id,
+        authority: task.authority,
+        approved: Boolean(request.policyContext?.explicitApproval),
+        metadata: { goal: task.goal },
+      };
+      const toolResult = await this.executeTool(step.toolId, { goal: task.goal }, context);
+      if (!toolResult.ok) {
+        step.status = "failed";
+        step.error = toolResult.error;
+        task.status = "failed";
+        task.error = toolResult.error;
+        task.updatedAt = new Date().toISOString();
+        return {
+          requestId,
+          task,
+          status: "failed",
+          error: task.error,
+          toolResult,
+        };
+      }
+
+      step.status = "completed";
+      step.result = toolResult.value;
+      task.status = "completed";
+      task.result = toolResult.value;
+      task.updatedAt = new Date().toISOString();
+      return {
+        requestId,
+        task,
+        status: "completed",
+        toolResult: toolResult.value,
+      };
+    }
+
     if (task.authority >= 3) {
       task.status = "failed";
       task.error = "Approval granted, but no state-changing execution tool is bound to this task yet.";
