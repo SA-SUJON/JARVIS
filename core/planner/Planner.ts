@@ -11,10 +11,12 @@ export interface Plan {
 export class Planner {
   createPlan(input: string, intent: Intent, requestId: string): Task {
     const now = new Date().toISOString();
+    const toolId = this.toolIdFor(intent, input);
     const step: TaskStep = {
       id: crypto.randomUUID(),
       description: this.describeStep(intent, input),
       status: "pending",
+      toolId,
     };
 
     return {
@@ -28,6 +30,19 @@ export class Planner {
       createdAt: now,
       updatedAt: now,
     };
+  }
+
+  private toolIdFor(intent: Intent, input: string): string | undefined {
+    switch (intent.kind) {
+      case "application_control":
+        return "system.open_app";
+      case "file_operation":
+        if (/\bdelete\s+(?:the\s+)?(?:file\s+)?/i.test(input)) return "filesystem.delete_file";
+        if (/\b(?:create|write|edit|modify)\s+(?:the\s+)?(?:file\s+)?/i.test(input)) return "filesystem.write_text";
+        return undefined;
+      default:
+        return undefined;
+    }
   }
 
   private describeStep(intent: Intent, input: string): string {
