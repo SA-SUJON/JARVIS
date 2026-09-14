@@ -44,12 +44,13 @@ test.describe("MARK_05 runtime adapter", () => {
     expect(result.error).toContain("explicit approval");
   });
 
-  test("requires approval for application control", async () => {
+  test("compiles application-control requests into structured arguments", async () => {
     const runtime = createMark05Runtime({ providers: DEFAULT_PROVIDERS });
     const result = await runtime.execute({ input: "open notepad" });
 
     expect(result.status).toBe("awaiting_approval");
     expect(result.task.steps[0]?.toolId).toBe("system.open_app");
+    expect(result.task.steps[0]?.arguments).toEqual({ app: "notepad" });
   });
 
   test("registers controlled tools in the default runtime", () => {
@@ -59,7 +60,7 @@ test.describe("MARK_05 runtime adapter", () => {
     expect(toolIds).toContain("filesystem.delete_file");
   });
 
-  test("executes an approved workspace file write through the tool boundary", async () => {
+  test("executes an approved workspace file write through structured arguments", async () => {
     const runtime = createMark05Runtime({ providers: DEFAULT_PROVIDERS });
     const relativePath = path.join("tests", ".mark05-runtime-write-check.txt");
     const target = path.resolve(process.env.JARVIS_WORKSPACE || process.cwd(), relativePath);
@@ -68,6 +69,10 @@ test.describe("MARK_05 runtime adapter", () => {
       const pending = await runtime.execute({ input: `create file ${relativePath} with content: MARK_05 tool execution verified` });
       expect(pending.status).toBe("awaiting_approval");
       expect(pending.approval?.id).toBeTruthy();
+      expect(pending.task.steps[0]?.arguments).toEqual({
+        path: relativePath,
+        content: "MARK_05 tool execution verified",
+      });
 
       const approvalId = pending.approval!.id;
       runtime.approve(approvalId);
@@ -75,6 +80,7 @@ test.describe("MARK_05 runtime adapter", () => {
 
       expect(completed.status).toBe("completed");
       expect(completed.task.steps[0]?.status).toBe("completed");
+      expect(completed.task.steps[0]?.verification).toMatchObject({ verified: true, status: "verified" });
       expect(completed.toolResult).toMatchObject({ operation: "write" });
     } finally {
       await rm(target, { force: true });
