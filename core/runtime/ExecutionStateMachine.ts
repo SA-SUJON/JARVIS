@@ -1,4 +1,6 @@
-import type { Task, TaskStatus } from "../contracts/types.js";
+import type { Task, TaskStep, TaskStatus } from "../contracts/types.js";
+
+type StatefulExecution = Pick<Task, "status" | "updatedAt"> | Pick<TaskStep, "status">;
 
 const ALLOWED_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   pending: ["planning", "cancelled", "failed"],
@@ -16,12 +18,12 @@ export class ExecutionStateMachine {
     return ALLOWED_TRANSITIONS[from].includes(to);
   }
 
-  transition(task: Task, to: TaskStatus): void {
-    const from = task.status;
+  transition(target: StatefulExecution, to: TaskStatus): void {
+    const from = target.status;
     if (!this.canTransition(from, to)) {
-      throw new Error(`Invalid task state transition: ${from} -> ${to}`);
+      throw new Error(`Invalid execution state transition: ${from} -> ${to}`);
     }
-    task.status = to;
-    task.updatedAt = new Date().toISOString();
+    target.status = to;
+    if ("updatedAt" in target) target.updatedAt = new Date().toISOString();
   }
 }
