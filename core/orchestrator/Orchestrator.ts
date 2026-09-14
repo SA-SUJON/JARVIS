@@ -80,7 +80,12 @@ export class Orchestrator {
     const decision = await this.policy.evaluate(
       task.authority,
       task.risk,
-      request.policyContext,
+      request.policyContext
+        ? {
+            operatorAuthenticated: request.policyContext.operatorAuthenticated,
+            explicitApproval: request.policyContext.explicitApproval,
+          }
+        : undefined,
     );
 
     if (!decision.allowed) {
