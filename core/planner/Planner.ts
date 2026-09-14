@@ -1,4 +1,5 @@
 import type { AuthorityLevel, RiskLevel, Task, TaskStep, ToolCall } from "../contracts/types.js";
+import { classifyIntent } from "../orchestrator/Intent.js";
 import type { Intent } from "../orchestrator/Intent.js";
 
 export interface Plan {
@@ -18,29 +19,59 @@ function stripQuotes(value: string): string {
   return trimmed;
 }
 
+function mergeAuthority(current: AuthorityLevel, next: AuthorityLevel): AuthorityLevel {
+  return Math.max(current, next) as AuthorityLevel;
+}
+
+function mergeRisk(current: RiskLevel, next: RiskLevel): RiskLevel {
+  const order: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2, critical: 3 };
+  return order[next] > order[current] ? next : current;
+}
+
 export class Planner {
   createPlan(input: string, intent: Intent, requestId: string): Task {
     const now = new Date().toISOString();
-    const toolCall = this.toolCallFor(intent, input);
-    const step: TaskStep = {
-      id: crypto.randomUUID(),
-      description: this.describeStep(intent, input),
-      status: "pending",
-      toolId: toolCall?.toolId,
-      arguments: toolCall?.arguments,
-    };
+    const segments = this.splitCompoundRequest(input);
+    const steps: TaskStep[] = [];
+    let authority = intent.authority;
+    let risk = intent.risk;
+
+    for (const segment of segments) {
+      const segmentIntent = segments.length > 1 ? classifyIntent(segment) : intent;
+      const toolCall = this.toolCallFor(segmentIntent, segment);
+      const step: TaskStep = {
+        id: crypto.randomUUID(),
+        description: this.describeStep(segmentIntent, segment),
+        status: "pending",
+        toolId: toolCall?.toolId,
+        arguments: toolCall?.arguments,
+      };
+
+      if (steps.length > 0) step.dependsOn = [steps[steps.length - 1].id];
+      steps.push(step);
+      authority = mergeAuthority(authority, segmentIntent.authority);
+      risk = mergeRisk(risk, segmentIntent.risk);
+    }
 
     return {
       id: crypto.randomUUID(),
       requestId,
       status: "planning",
       goal: input,
-      authority: intent.authority,
-      risk: intent.risk,
-      steps: [step],
+      authority,
+      risk,
+      steps,
       createdAt: now,
       updatedAt: now,
     };
+  }
+
+  private splitCompoundRequest(input: string): string[] {
+    return input
+      .trim()
+      .split(/\s+then\s+(?=(?:open|launch|start|create|write|edit|modify|delete)\b)/i)
+      .map((segment) => segment.trim())
+      .filter(Boolean);
   }
 
   private toolCallFor(intent: Intent, input: string): ToolCall | undefined {
