@@ -41,7 +41,7 @@ export interface ProviderRuntime {
 }
 
 export interface ProviderFactory {
-  create(definition: ProviderDefinition, credentials: ProviderCredentials): import("../core/contracts/types.js").Provider;
+  create(definition: ProviderDefinition, credentials: ProviderCredentials): Provider;
 }
 
 export interface ModelRouteRequest {
@@ -71,7 +71,7 @@ export interface ProviderManagerOptions {
 }
 
 export interface RoutedProvider {
-  provider: import("../core/contracts/types.js").Provider;
+  providerId: ProviderId;
   definition: ProviderDefinition;
   model: string;
   score: number;
