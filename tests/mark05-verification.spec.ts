@@ -20,7 +20,13 @@ test.describe("MARK_05 verification engine", () => {
         taskId: "task-test",
         toolId: "filesystem.write_text",
         input: { goal: `create file ${relativePath} with content: ${content}` },
-        result: { toolId: "filesystem.write_text", ok: true, value: { path: relativePath, bytes, sha256, operation: "write" }, durationMs: 1 },
+        result: {
+          executionId: "verification-write",
+          toolId: "filesystem.write_text",
+          ok: true,
+          data: { path: relativePath, bytes, sha256, operation: "write" },
+          metadata: { durationMs: 1, startedAt: new Date().toISOString(), completedAt: new Date().toISOString() },
+        },
       });
 
       expect(result.verified).toBe(true);
@@ -44,15 +50,16 @@ test.describe("MARK_05 verification engine", () => {
         toolId: "filesystem.write_text",
         input: { goal: `create file ${relativePath} with content: ${expected}` },
         result: {
+          executionId: "verification-mismatch",
           toolId: "filesystem.write_text",
           ok: true,
-          value: {
+          data: {
             path: relativePath,
             bytes: Buffer.byteLength(expected, "utf8"),
             sha256: createHash("sha256").update(expected).digest("hex"),
             operation: "write",
           },
-          durationMs: 1,
+          metadata: { durationMs: 1, startedAt: new Date().toISOString(), completedAt: new Date().toISOString() },
         },
       });
 
@@ -74,7 +81,13 @@ test.describe("MARK_05 verification engine", () => {
       taskId: "task-test",
       toolId: "filesystem.delete_file",
       input: { path: relativePath },
-      result: { toolId: "filesystem.delete_file", ok: true, value: { path: relativePath, operation: "delete" }, durationMs: 1 },
+      result: {
+        executionId: "verification-delete",
+        toolId: "filesystem.delete_file",
+        ok: true,
+        data: { path: relativePath, operation: "delete" },
+        metadata: { durationMs: 1, startedAt: new Date().toISOString(), completedAt: new Date().toISOString() },
+      },
     });
 
     expect(result.verified).toBe(true);
