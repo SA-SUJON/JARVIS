@@ -43,16 +43,38 @@ async function verifyApplication(command: string): Promise<boolean> {
 
 class ControlledToolVerifier implements Verifier {
   supports(toolId: string): boolean {
-    return ["filesystem.write_text", "filesystem.delete_file", "system.open_app"].includes(toolId);
+    return ["filesystem.read_text", "filesystem.write_text", "filesystem.delete_file", "system.open_app"].includes(toolId);
   }
 
   async verify(request: VerificationRequest): Promise<VerificationResult> {
     if (!request.result.ok) return { status: "failed", verified: false, reason: "Tool execution did not succeed, so post-execution verification cannot pass." };
     switch (request.toolId) {
+      case "filesystem.read_text": return this.verifyRead(request);
       case "filesystem.write_text": return this.verifyWrite(request);
       case "filesystem.delete_file": return this.verifyDelete(request);
       case "system.open_app": return this.verifyOpenApp(request);
       default: return { status: "unsupported", verified: false, reason: `No verifier is registered for tool: ${request.toolId}` };
+    }
+  }
+
+  private async verifyRead(request: VerificationRequest): Promise<VerificationResult> {
+    const value = (request.result.data ?? {}) as Record<string, unknown>;
+    const relativePath = String(value.path ?? "");
+    if (!relativePath) return { status: "failed", verified: false, reason: "Read tool returned no source path." };
+    try {
+      const target = workspaceTarget(relativePath);
+      const actualContent = await readFile(target, { encoding: "utf8" });
+      const actualBytes = Buffer.byteLength(actualContent, "utf8");
+      const actualHash = createHash("sha256").update(Buffer.from(actualContent, "utf8")).digest("hex");
+      const expectedContent = String(value.content ?? "");
+      const expectedBytes = Number(value.bytes);
+      const expectedHash = String(value.sha256 ?? "");
+      const matches = actualContent === expectedContent && Number.isFinite(expectedBytes) && actualBytes === expectedBytes && Boolean(expectedHash) && actualHash === expectedHash;
+      return matches
+        ? { status: "verified", verified: true, reason: "Read file content, byte count, and SHA-256 match the tool result.", details: { path: relativePath, bytes: actualBytes, sha256: actualHash } }
+        : { status: "failed", verified: false, reason: "Read file content or integrity metadata changed before verification.", details: { path: relativePath, expectedBytes, actualBytes, expectedSha256: expectedHash, actualSha256: actualHash } };
+    } catch (error) {
+      return { status: "failed", verified: false, reason: error instanceof Error ? error.message : String(error) };
     }
   }
 
