@@ -127,6 +127,7 @@ export interface TaskStep {
   description: string;
   toolId?: string;
   arguments?: ToolArguments;
+  dependsOn?: string[];
   status: TaskStatus;
   result?: unknown;
   verification?: unknown;
