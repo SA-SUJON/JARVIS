@@ -1,4 +1,4 @@
-import type { AuthorityLevel, RiskLevel, Tool, ToolArguments, ToolContext } from "../core/contracts/types.js";
+import type { AuthorityLevel, RiskLevel, Tool, ToolArguments, ToolContext, ToolDefinition } from "../core/contracts/types.js";
 
 export interface ToolExecutionRequest {
   toolId: string;
