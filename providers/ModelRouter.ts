@@ -19,7 +19,7 @@ export class ModelRouter {
     const modelList = [...models];
 
     return [...runtimes]
-      .filter((runtime) => runtime.definition.enabledByDefault && runtime.status !== "offline" && runtime.status !== "unconfigured")
+      .filter((runtime) => runtime.definition.enabledByDefault && runtime.status !== "unconfigured")
       .map((runtime) => {
         const definition = runtime.definition;
         const exactModel = request.preferredModel
@@ -39,6 +39,8 @@ export class ModelRouter {
         }
         score -= runtime.consecutiveFailures * 15;
         if (runtime.status === "quota") score -= 100;
+        if (runtime.status === "error") score -= 35;
+        if (runtime.status === "offline") score -= 5;
 
         return {
           providerId: definition.id,
