@@ -40,6 +40,20 @@ export type EventName =
 export type ChatRole = "system" | "user" | "assistant";
 export type ToolArguments = Record<string, unknown>;
 
+export type ToolArgumentType = "string" | "number" | "boolean";
+
+export interface ToolArgumentProperty {
+  type: ToolArgumentType;
+  description?: string;
+}
+
+export interface ToolArgumentSchema {
+  type: "object";
+  properties: Record<string, ToolArgumentProperty>;
+  required?: string[];
+  additionalProperties?: boolean;
+}
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
@@ -102,6 +116,7 @@ export interface ToolDefinition {
   description: string;
   authority: AuthorityLevel;
   risk: RiskLevel;
+  argumentSchema?: ToolArgumentSchema;
 }
 
 export interface ToolCall {
