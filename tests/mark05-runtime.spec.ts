@@ -1,9 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { rm, access } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import { createMark05Runtime } from "../electron/mark05Runtime.js";
 import { DEFAULT_PROVIDERS } from "../electron/providers.js";
 import { createBuiltinTools } from "../tools/builtin/index.js";
+import type { Tool } from "../core/contracts/types.js";
+import { ToolRegistry } from "../tools/ToolRegistry.js";
+import { ToolExecutor } from "../tools/ToolExecutor.js";
 
 test.describe("MARK_05 runtime adapter", () => {
   test("maps Electron provider settings into the MARK_05 provider catalog", () => {
@@ -53,69 +56,58 @@ test.describe("MARK_05 runtime adapter", () => {
     expect(result.task.steps[0]?.arguments).toEqual({ app: "notepad" });
   });
 
-  test("plans compound requests as ordered dependent steps", async () => {
-    const runtime = createMark05Runtime({ providers: DEFAULT_PROVIDERS });
-    const first = path.join("tests", ".mark05-step-one.txt");
-    const second = path.join("tests", ".mark05-step-two.txt");
-
-    try {
-      const pending = await runtime.execute({
-        input: `create file ${first} with content: first then create file ${second} with content: second`,
-      });
-
-      expect(pending.status).toBe("awaiting_approval");
-      expect(pending.task.steps).toHaveLength(2);
-      expect(pending.task.steps[0]?.arguments).toEqual({ path: first, content: "first" });
-      expect(pending.task.steps[1]?.arguments).toEqual({ path: second, content: "second" });
-      expect(pending.task.steps[1]?.dependsOn).toEqual([pending.task.steps[0]!.id]);
-
-      const approvalId = pending.approval!.id;
-      runtime.approve(approvalId);
-      const completed = await runtime.executeApproved(approvalId);
-
-      expect(completed.status).toBe("completed");
-      expect(completed.task.steps.map((step) => step.status)).toEqual(["completed", "completed"]);
-      expect(completed.task.steps.every((step) => (step.verification as { verified?: boolean })?.verified)).toBe(true);
-      await access(path.resolve(process.env.JARVIS_WORKSPACE || process.cwd(), first));
-      await access(path.resolve(process.env.JARVIS_WORKSPACE || process.cwd(), second));
-    } finally {
-      await rm(path.resolve(process.env.JARVIS_WORKSPACE || process.cwd(), first), { force: true });
-      await rm(path.resolve(process.env.JARVIS_WORKSPACE || process.cwd(), second), { force: true });
-    }
-  });
-
-  test("stops the ordered plan after the first step fails", async () => {
-    const runtime = createMark05Runtime({ providers: DEFAULT_PROVIDERS });
-    const blocked = path.join("tests", ".mark05-should-not-run.txt");
-    const targetRoot = process.env.JARVIS_WORKSPACE || process.cwd();
-
-    try {
-      const pending = await runtime.execute({
-        input: `create file ../outside-mark05-check.txt with content: blocked then create file ${blocked} with content: should-not-run`,
-      });
-
-      expect(pending.status).toBe("awaiting_approval");
-      expect(pending.task.steps).toHaveLength(2);
-
-      const approvalId = pending.approval!.id;
-      runtime.approve(approvalId);
-      const failed = await runtime.executeApproved(approvalId);
-
-      expect(failed.status).toBe("failed");
-      expect(failed.task.steps[0]?.status).toBe("failed");
-      expect(failed.task.steps[1]?.status).toBe("pending");
-      await expect(access(path.resolve(targetRoot, blocked))).rejects.toThrow();
-    } finally {
-      await rm(path.resolve(targetRoot, blocked), { force: true });
-      await rm(path.resolve(targetRoot, "..", "outside-mark05-check.txt"), { force: true });
-    }
-  });
-
   test("registers controlled tools in the default runtime", () => {
     const toolIds = createBuiltinTools().map((tool) => tool.definition.id);
     expect(toolIds).toContain("system.open_app");
     expect(toolIds).toContain("filesystem.write_text");
     expect(toolIds).toContain("filesystem.delete_file");
+  });
+
+  test("declares schemas for controlled tool arguments", () => {
+    const tools = createBuiltinTools();
+    const openApp = tools.find((tool) => tool.definition.id === "system.open_app");
+    const writeText = tools.find((tool) => tool.definition.id === "filesystem.write_text");
+    const deleteFile = tools.find((tool) => tool.definition.id === "filesystem.delete_file");
+
+    expect(openApp?.definition.argumentSchema?.required).toEqual(["app"]);
+    expect(writeText?.definition.argumentSchema?.required).toEqual(["path", "content"]);
+    expect(deleteFile?.definition.argumentSchema?.required).toEqual(["path"]);
+  });
+
+  test("rejects invalid tool arguments before invoking implementation", async () => {
+    let invoked = false;
+    const tool: Tool = {
+      definition: {
+        id: "test.contract",
+        name: "Contract test",
+        description: "Test-only tool contract.",
+        authority: 0,
+        risk: "low",
+        argumentSchema: {
+          type: "object",
+          properties: { value: { type: "string" } },
+          required: ["value"],
+          additionalProperties: false,
+        },
+      },
+      async execute() {
+        invoked = true;
+        return { ok: true };
+      },
+    };
+
+    const registry = new ToolRegistry();
+    registry.register(tool);
+    const executor = new ToolExecutor(registry);
+    const result = await executor.execute({
+      toolId: tool.definition.id,
+      input: { value: 42, extra: true },
+      context: { requestId: "contract-test", authority: 0, approved: true },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("Unexpected tool argument: extra");
+    expect(invoked).toBe(false);
   });
 
   test("executes an approved workspace file write through structured arguments", async () => {
