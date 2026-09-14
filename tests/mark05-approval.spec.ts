@@ -51,4 +51,24 @@ test.describe("MARK_05 approval lifecycle", () => {
     expect(result.approval?.status).toBe("pending");
     expect(runtime.listApprovals()).toHaveLength(1);
   });
+
+  test("approved execution resumes the exact pending task", async () => {
+    const runtime = new RuntimeKernel();
+    const initial = await runtime.execute({ input: "delete the old project files" });
+    const approvalId = initial.approval?.id;
+
+    expect(initial.status).toBe("awaiting_approval");
+    expect(approvalId).toBeTruthy();
+
+    const approved = runtime.approve(approvalId!);
+    expect(approved.status).toBe("approved");
+
+    const resumed = await runtime.executeApproved(approvalId!);
+    expect(resumed.requestId).toBe(initial.requestId);
+    expect(resumed.task.id).toBe(initial.task.id);
+    expect(resumed.task.goal).toBe(initial.task.goal);
+    expect(resumed.status).toBe("failed");
+    expect(resumed.error).toContain("no state-changing execution tool");
+    expect(runtime.listApprovals()).toHaveLength(0);
+  });
 });
