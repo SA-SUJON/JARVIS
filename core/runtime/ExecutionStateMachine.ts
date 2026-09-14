@@ -3,7 +3,7 @@ import type { Task, TaskStep, TaskStatus } from "../contracts/types.js";
 type StatefulExecution = Pick<Task, "status" | "updatedAt"> | Pick<TaskStep, "status">;
 
 const ALLOWED_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
-  pending: ["planning", "cancelled", "failed"],
+  pending: ["planning", "running", "cancelled", "failed"],
   planning: ["awaiting_approval", "running", "failed", "cancelled"],
   awaiting_approval: ["running", "failed", "cancelled"],
   running: ["verifying", "completed", "failed", "cancelled"],
