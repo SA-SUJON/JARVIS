@@ -26,8 +26,14 @@ export const openAppTool: Tool = {
     description: "Open one approved desktop application from the built-in allowlist.",
     authority: 2,
     risk: "low",
+    argumentSchema: {
+      type: "object",
+      properties: { app: { type: "string", description: "Allowlisted application name." } },
+      required: ["app"],
+      additionalProperties: false,
+    },
   },
-  async execute(input: Record<string, unknown>, _context: ToolContext) {
+  async execute(input, _context: ToolContext) {
     const requested = String(input.app ?? "").trim().toLowerCase();
     if (!requested) throw new Error("An application name is required.");
 
@@ -60,8 +66,17 @@ export const writeTextFileTool: Tool = {
     description: "Create or overwrite a UTF-8 text file inside the configured JARVIS workspace.",
     authority: 3,
     risk: "medium",
+    argumentSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Workspace-relative target path." },
+        content: { type: "string", description: "UTF-8 text to write." },
+      },
+      required: ["path", "content"],
+      additionalProperties: false,
+    },
   },
-  async execute(input: Record<string, unknown>, _context: ToolContext) {
+  async execute(input, _context: ToolContext) {
     const relativePath = String(input.path ?? "").trim();
     if (!relativePath) throw new Error("A workspace-relative file path is required.");
     const target = workspacePath(relativePath);
@@ -82,8 +97,14 @@ export const deleteFileTool: Tool = {
     description: "Delete one file inside the configured JARVIS workspace.",
     authority: 3,
     risk: "medium",
+    argumentSchema: {
+      type: "object",
+      properties: { path: { type: "string", description: "Workspace-relative target path." } },
+      required: ["path"],
+      additionalProperties: false,
+    },
   },
-  async execute(input: Record<string, unknown>, _context: ToolContext) {
+  async execute(input, _context: ToolContext) {
     const relativePath = String(input.path ?? "").trim();
     if (!relativePath) throw new Error("A workspace-relative file path is required.");
     const target = workspacePath(relativePath);
