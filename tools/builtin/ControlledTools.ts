@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -79,7 +80,8 @@ export const writeTextFileTool: Tool = {
     if (bytes > MAX_TEXT_BYTES) throw new Error(`Text payload exceeds the ${MAX_TEXT_BYTES} byte safety limit.`);
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, content, { encoding: "utf8" });
-    return { path: path.relative(WORKSPACE_ROOT, target), bytes, operation: "write" };
+    const sha256 = createHash("sha256").update(Buffer.from(content, "utf8")).digest("hex");
+    return { path: path.relative(WORKSPACE_ROOT, target), bytes, sha256, operation: "write" };
   },
 };
 
