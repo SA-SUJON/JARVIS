@@ -7,6 +7,7 @@ import type {
 } from "../contracts/types.js";
 import { EventBus } from "../events/EventBus.js";
 import { ExecutionStateMachine } from "./ExecutionStateMachine.js";
+import { RecoveryEngine } from "./RecoveryEngine.js";
 import { Orchestrator, type OrchestratorRequest } from "../orchestrator/Orchestrator.js";
 import { ApprovalManager, type ApprovalRequest } from "../policy/ApprovalManager.js";
 import { PolicyEngine } from "../policy/PolicyEngine.js";
@@ -70,6 +71,7 @@ export class RuntimeKernel {
   readonly verification: VerificationEngine;
   readonly executionState: ExecutionStateMachine;
   readonly taskContext: TaskContextStore;
+  readonly recovery: RecoveryEngine;
 
   private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
@@ -88,6 +90,7 @@ export class RuntimeKernel {
     this.verification = new VerificationEngine(this.events);
     this.executionState = new ExecutionStateMachine();
     this.taskContext = new TaskContextStore();
+    this.recovery = new RecoveryEngine();
     this.orchestrator = new Orchestrator({
       events: this.events,
       planner: this.planner,
@@ -195,6 +198,17 @@ export class RuntimeKernel {
     return { requestId: task.requestId, task, status: "failed", error };
   }
 
+  private retryStep(task: Task, step: TaskStep, reason: string): boolean {
+    const decision = this.recovery.decide(task, step, reason);
+    if (decision.action !== "retry_step") return false;
+
+    this.executionState.transition(step, "replanning");
+    if (task.status !== "replanning") this.executionState.transition(task, "replanning");
+    this.executionState.transition(task, "running");
+    this.executionState.transition(step, "running");
+    return true;
+  }
+
   private async executeToolStep(
     request: RuntimeExecutionRequest,
     task: Task,
@@ -239,6 +253,9 @@ export class RuntimeKernel {
     };
     const toolResult = await this.executeTool(step.toolId, toolInput, context);
     if (!toolResult.ok) {
+      if (this.retryStep(task, step, toolResult.error || "Tool execution failed.")) {
+        return this.executeToolStep(request, task, requestId, step);
+      }
       this.executionState.transition(step, "failed");
       step.error = toolResult.error || "Tool execution failed.";
       return this.failTask(task, step.error);
@@ -258,6 +275,9 @@ export class RuntimeKernel {
     step.verification = verification;
 
     if (!verification.verified) {
+      if (this.retryStep(task, step, `Verification failed: ${verification.reason}`)) {
+        return this.executeToolStep(request, task, requestId, step);
+      }
       this.executionState.transition(step, "failed");
       step.error = verification.reason;
       return this.failTask(task, `Verification failed: ${verification.reason}`);
@@ -282,6 +302,7 @@ export class RuntimeKernel {
 
       for (const step of task.steps) {
         if (task.status === "verifying") this.executionState.transition(task, "running");
+        if (task.status === "replanning") this.executionState.transition(task, "running");
         const result = await this.executeToolStep(request, task, requestId, step);
         if (result) return { ...result, requestId };
         if (step.toolId) {
