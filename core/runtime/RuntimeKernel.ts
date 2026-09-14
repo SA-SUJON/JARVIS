@@ -2,9 +2,11 @@ import type {
   ChatMessage,
   ProviderResponse,
   Task,
+  ToolContext,
 } from "../contracts/types.js";
 import { EventBus } from "../events/EventBus.js";
 import { Orchestrator, type OrchestratorRequest } from "../orchestrator/Orchestrator.js";
+import { ApprovalManager, type ApprovalRequest } from "../policy/ApprovalManager.js";
 import { PolicyEngine } from "../policy/PolicyEngine.js";
 import { Planner } from "../planner/Planner.js";
 import type { ModelRouteRequest, ProviderId, ProviderManagerOptions } from "../../providers/types.js";
@@ -19,6 +21,7 @@ export interface RuntimeKernelOptions {
   providers?: ProviderManagerOptions;
   tools?: ToolRegistry;
   events?: EventBus;
+  approvals?: ApprovalManager;
 }
 
 export interface RuntimeExecutionRequest extends OrchestratorRequest {
@@ -36,6 +39,7 @@ export interface RuntimeExecutionResult {
   status: "completed" | "awaiting_approval" | "failed";
   providerId?: ProviderId;
   model?: string;
+  approval?: ApprovalRequest;
   error?: string;
 }
 
@@ -43,6 +47,7 @@ export class RuntimeKernel {
   readonly events: EventBus;
   readonly planner: Planner;
   readonly policy: PolicyEngine;
+  readonly approvals: ApprovalManager;
   readonly orchestrator: Orchestrator;
   readonly providers: ProviderManager;
   readonly modelRouter: ModelRouter;
@@ -55,6 +60,7 @@ export class RuntimeKernel {
     this.events = options.events ?? new EventBus();
     this.planner = new Planner();
     this.policy = new PolicyEngine();
+    this.approvals = options.approvals ?? new ApprovalManager();
     this.providers = new ProviderManager(options.providers);
     this.modelRouter = new ModelRouter();
     this.modelRegistry = new ModelRegistry(this.providers);
@@ -70,6 +76,17 @@ export class RuntimeKernel {
 
   async execute(request: RuntimeExecutionRequest): Promise<RuntimeExecutionResult> {
     const orchestration = await this.orchestrator.execute(request);
+
+    if (orchestration.status === "awaiting_approval") {
+      const approval = this.approvals.create(orchestration.task);
+      return {
+        requestId: orchestration.requestId,
+        task: orchestration.task,
+        status: "awaiting_approval",
+        approval,
+        error: orchestration.error,
+      };
+    }
 
     if (orchestration.status !== "completed") {
       return {
@@ -133,10 +150,32 @@ export class RuntimeKernel {
     }
   }
 
+  listApprovals(): ApprovalRequest[] {
+    return this.approvals.list();
+  }
+
+  approve(id: string): ApprovalRequest {
+    const decision = this.approvals.approve(id);
+    if (!decision.allowed || !decision.request) throw new Error(decision.reason || "Approval could not be granted.");
+    return decision.request;
+  }
+
+  reject(id: string): boolean {
+    const decision = this.approvals.reject(id);
+    if (!decision.request && !decision.reason) return false;
+    return Boolean(decision.request);
+  }
+
+  consumeApproval(id: string): ApprovalRequest {
+    const decision = this.approvals.consumeApproved(id);
+    if (!decision.allowed || !decision.request) throw new Error(decision.reason || "Approval is not valid.");
+    return decision.request;
+  }
+
   async executeTool(
     toolId: string,
     input: Record<string, unknown>,
-    context: import("../contracts/types.js").ToolContext,
+    context: ToolContext,
   ) {
     return this.toolExecutor.execute({ toolId, input, context });
   }
