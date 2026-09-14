@@ -1,7 +1,7 @@
 import type { ModelInfo } from "../core/contracts/types.js";
-import type { ModelRouteRequest, ProviderRuntime, RoutedProvider } from "./types.js";
+import type { ModelRouteRequest, ProviderId, ProviderRuntime, RoutedProvider } from "./types.js";
 
-const taskWeights: Record<NonNullable<ModelRouteRequest["taskType"]>, Record<string, number>> = {
+const taskWeights: Record<NonNullable<ModelRouteRequest["taskType"]>, Partial<Record<ProviderId, number>>> = {
   conversation: { gemini: 10, openai: 9, anthropic: 9, deepseek: 7, groq: 8 },
   reasoning: { openai: 10, anthropic: 10, deepseek: 9, gemini: 8, xai: 8 },
   coding: { anthropic: 10, openai: 9, deepseek: 9, gemini: 8, qwen: 8 },
@@ -17,13 +17,15 @@ export class ModelRouter {
     models: Iterable<ModelInfo> = []
   ): RoutedProvider[] {
     const modelList = [...models];
-    const ranked = [...runtimes]
+
+    return [...runtimes]
       .filter((runtime) => runtime.definition.enabledByDefault && runtime.status !== "offline" && runtime.status !== "unconfigured")
       .map((runtime) => {
         const definition = runtime.definition;
-        const model = request.preferredModel
-          ?? (modelList.find((item) => item.provider === definition.id && item.id === request.preferredModel)?.id)
-          ?? definition.defaultModel;
+        const exactModel = request.preferredModel
+          ? modelList.find((item) => item.provider === definition.id && item.id === request.preferredModel)?.id
+          : undefined;
+        const model = exactModel ?? request.preferredModel ?? definition.defaultModel;
 
         let score = 100 - definition.priority;
 
@@ -32,18 +34,19 @@ export class ModelRouter {
         if (request.maxLatencyMs !== undefined && runtime.lastLatencyMs !== undefined) {
           score += runtime.lastLatencyMs <= request.maxLatencyMs ? 10 : -20;
         }
-        if (runtime.consecutiveFailures > 0) score -= runtime.consecutiveFailures * 15;
+        if (request.requiresTools) {
+          score += /tool|function/i.test(model) ? 5 : 0;
+        }
+        score -= runtime.consecutiveFailures * 15;
         if (runtime.status === "quota") score -= 100;
 
         return {
-          provider: null as never,
+          providerId: definition.id,
           definition,
           model,
           score,
         } satisfies RoutedProvider;
       })
       .sort((a, b) => b.score - a.score);
-
-    return ranked;
   }
 }
