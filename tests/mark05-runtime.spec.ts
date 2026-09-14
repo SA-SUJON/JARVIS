@@ -108,6 +108,47 @@ test.describe("MARK_05 runtime adapter", () => {
     expect(result.ok).toBe(false);
     expect(result.error).toContain("Unexpected tool argument: extra");
     expect(invoked).toBe(false);
+    expect(result.executionId).toBeTruthy();
+    expect(result.metadata.startedAt).toBeTruthy();
+    expect(result.metadata.completedAt).toBeTruthy();
+    expect(result.metadata.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  test("returns structured tool data and execution metadata", async () => {
+    const tool: Tool = {
+      definition: {
+        id: "test.result-envelope",
+        name: "Result envelope test",
+        description: "Test-only result envelope tool.",
+        authority: 0,
+        risk: "low",
+        argumentSchema: {
+          type: "object",
+          properties: { message: { type: "string" } },
+          required: ["message"],
+          additionalProperties: false,
+        },
+      },
+      async execute(input) {
+        return { echoed: String(input.message), operation: "test" };
+      },
+    };
+
+    const registry = new ToolRegistry();
+    registry.register(tool);
+    const executor = new ToolExecutor(registry);
+    const result = await executor.execute({
+      toolId: tool.definition.id,
+      input: { message: "MARK_05" },
+      context: { requestId: "result-envelope-test", authority: 0, approved: true },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.toolId).toBe(tool.definition.id);
+    expect(result.data).toEqual({ echoed: "MARK_05", operation: "test" });
+    expect(result.executionId).toBeTruthy();
+    expect(result.metadata.durationMs).toBeGreaterThanOrEqual(0);
+    expect(new Date(result.metadata.completedAt).getTime()).toBeGreaterThanOrEqual(new Date(result.metadata.startedAt).getTime());
   });
 
   test("executes an approved workspace file write through structured arguments", async () => {
@@ -132,6 +173,7 @@ test.describe("MARK_05 runtime adapter", () => {
       expect(completed.task.steps[0]?.status).toBe("completed");
       expect(completed.task.steps[0]?.verification).toMatchObject({ verified: true, status: "verified" });
       expect(completed.toolResult).toMatchObject({ operation: "write" });
+      expect(completed.task.steps[0]?.result).toMatchObject({ operation: "write" });
     } finally {
       await rm(target, { force: true });
     }
