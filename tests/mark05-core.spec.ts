@@ -76,9 +76,9 @@ test.describe("MARK_05 core", () => {
     expect(count).toBe(1);
   });
 
-  test("policy classifies local file reads as low-risk authority-one work", async () => {
+  test("plans local file reads into a controlled read tool", async () => {
     const result = await new Orchestrator().execute({ input: "read file notes.txt" });
-    expect(result.status).toBe("completed");
+    expect(result.status).toBe("awaiting_approval");
     expect(result.task.authority).toBe(3);
     expect(result.task.steps[0]?.toolId).toBe("filesystem.read_text");
     expect(result.task.steps[0]?.arguments).toEqual({ path: "notes.txt" });
