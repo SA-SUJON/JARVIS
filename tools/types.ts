@@ -1,4 +1,4 @@
-import type { AuthorityLevel, RiskLevel, Tool, ToolArguments, ToolContext, ToolDefinition } from "../core/contracts/types.js";
+import type { AuthorityLevel, RiskLevel, Tool, ToolArguments, ToolContext } from "../core/contracts/types.js";
 
 export interface ToolExecutionRequest {
   toolId: string;
@@ -7,11 +7,16 @@ export interface ToolExecutionRequest {
 }
 
 export interface ToolExecutionResult<T = unknown> {
+  executionId: string;
   toolId: string;
   ok: boolean;
-  value?: T;
+  data?: T;
   error?: string;
-  durationMs: number;
+  metadata: {
+    durationMs: number;
+    startedAt: string;
+    completedAt: string;
+  };
 }
 
 export interface ToolRegistration extends ToolDefinition {
