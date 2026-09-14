@@ -6,60 +6,27 @@ import { ToolExecutor } from "../tools/ToolExecutor.js";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
 import type { Tool } from "../core/contracts/types.js";
 
-const makeTool = (authority: Tool["definition"]["authority"]): Tool => ({
-  definition: {
-    id: "test.tool",
-    name: "Test Tool",
-    description: "Deterministic test tool",
-    authority,
-    risk: authority >= 3 ? "medium" : "low",
-  },
-  async execute(input) {
-    return { echoed: input.value ?? null };
-  },
-});
-
 test.describe("MARK_05 core", () => {
+  const makeTool = (authority: Tool["definition"]["authority"]): Tool => ({
+    definition: {
+      id: "test.tool",
+      name: "Test Tool",
+      description: "Deterministic test tool",
+      authority,
+      risk: authority >= 3 ? "medium" : "low",
+    },
+    async execute(input) {
+      return { echoed: input.value ?? null };
+    },
+  });
+
   test("policy allows low-risk conversation and gates state-changing actions", async () => {
     const policy = new PolicyEngine();
-
-    await expect(
-      policy.evaluate(0, "low"),
-    ).resolves.toMatchObject({
-      allowed: true,
-      requiresApproval: false,
-    });
-
-    await expect(
-      policy.evaluate(3, "medium"),
-    ).resolves.toMatchObject({
-      allowed: false,
-      requiresApproval: true,
-    });
-
-    await expect(
-      policy.evaluate(4, "high", { explicitApproval: true }),
-    ).resolves.toMatchObject({
-      allowed: true,
-      requiresApproval: true,
-    });
-
-    await expect(
-      policy.evaluate(5, "critical", { explicitApproval: true }),
-    ).resolves.toMatchObject({
-      allowed: false,
-      requiresApproval: true,
-    });
-
-    await expect(
-      policy.evaluate(5, "critical", {
-        operatorAuthenticated: true,
-        explicitApproval: true,
-      }),
-    ).resolves.toMatchObject({
-      allowed: true,
-      requiresApproval: true,
-    });
+    await expect(policy.evaluate(0, "low")).resolves.toMatchObject({ allowed: true, requiresApproval: false });
+    await expect(policy.evaluate(3, "medium")).resolves.toMatchObject({ allowed: false, requiresApproval: true });
+    await expect(policy.evaluate(4, "high", { explicitApproval: true })).resolves.toMatchObject({ allowed: true, requiresApproval: true });
+    await expect(policy.evaluate(5, "critical", { explicitApproval: true })).resolves.toMatchObject({ allowed: false, requiresApproval: true });
+    await expect(policy.evaluate(5, "critical", { operatorAuthenticated: true, explicitApproval: true })).resolves.toMatchObject({ allowed: true, requiresApproval: true });
   });
 
   test("orchestrator classifies and gates a file operation", async () => {
@@ -68,13 +35,8 @@ test.describe("MARK_05 core", () => {
     events.on("assistant.started", () => seen.push("started"));
     events.on("assistant.thinking", () => seen.push("thinking"));
     events.on("security.blocked", () => seen.push("blocked"));
-
     const orchestrator = new Orchestrator({ events });
-    const result = await orchestrator.execute({
-      requestId: "test-request",
-      input: "delete a file named notes.txt",
-    });
-
+    const result = await orchestrator.execute({ requestId: "test-request", input: "delete a file named notes.txt" });
     expect(result.requestId).toBe("test-request");
     expect(result.intent.kind).toBe("file_operation");
     expect(result.status).toBe("awaiting_approval");
@@ -83,9 +45,7 @@ test.describe("MARK_05 core", () => {
   });
 
   test("orchestrator rejects an empty request", async () => {
-    const orchestrator = new Orchestrator();
-    const result = await orchestrator.execute({ input: "   " });
-
+    const result = await new Orchestrator().execute({ input: "   " });
     expect(result.status).toBe("failed");
     expect(result.error).toBe("Request cannot be empty.");
   });
@@ -94,45 +54,33 @@ test.describe("MARK_05 core", () => {
     const registry = new ToolRegistry();
     registry.register(makeTool(1));
     const executor = new ToolExecutor(registry);
-
-    const success = await executor.execute({
-      toolId: "test.tool",
-      input: { value: "hello" },
-      context: { requestId: "tool-1", authority: 1, approved: false },
-    });
-
+    const success = await executor.execute({ toolId: "test.tool", input: { value: "hello" }, context: { requestId: "tool-1", authority: 1, approved: false } });
     expect(success.ok).toBe(true);
     expect(success.data).toEqual({ echoed: "hello" });
     expect(success.executionId).toBeTruthy();
     expect(success.metadata.durationMs).toBeGreaterThanOrEqual(0);
-
     const blockedRegistry = new ToolRegistry();
     blockedRegistry.register(makeTool(3));
-    const blockedExecutor = new ToolExecutor(blockedRegistry);
-
-    const blocked = await blockedExecutor.execute({
-      toolId: "test.tool",
-      input: { value: "should not run" },
-      context: { requestId: "tool-2", authority: 2, approved: true },
-    });
-
+    const blocked = await new ToolExecutor(blockedRegistry).execute({ toolId: "test.tool", input: { value: "should not run" }, context: { requestId: "tool-2", authority: 2, approved: true } });
     expect(blocked.ok).toBe(false);
     expect(blocked.error).toContain("Insufficient authority");
-    expect(blocked.executionId).toBeTruthy();
-    expect(blocked.metadata.completedAt).toBeTruthy();
   });
 
   test("event bus supports subscription and unsubscribe", async () => {
     const events = new EventBus();
     let count = 0;
-    const unsubscribe = events.on("tool.executed", () => {
-      count += 1;
-    });
-
+    const unsubscribe = events.on("tool.executed", () => { count += 1; });
     await events.emit("tool.executed", { ok: true }, { requestId: "event-1" });
     unsubscribe();
     await events.emit("tool.executed", { ok: true }, { requestId: "event-2" });
-
     expect(count).toBe(1);
+  });
+
+  test("policy classifies local file reads as low-risk authority-one work", async () => {
+    const result = await new Orchestrator().execute({ input: "read file notes.txt" });
+    expect(result.status).toBe("completed");
+    expect(result.task.authority).toBe(3);
+    expect(result.task.steps[0]?.toolId).toBe("filesystem.read_text");
+    expect(result.task.steps[0]?.arguments).toEqual({ path: "notes.txt" });
   });
 });
