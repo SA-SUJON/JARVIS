@@ -1,5 +1,31 @@
 import type { ChatMessage, ModelInfo, ProviderConfig, ProviderId, JarvisSettings } from './types';
 
+type JarvisApprovalRequest = {
+  id: string;
+  requestId: string;
+  taskId: string;
+  summary: string;
+  authority: number;
+  risk: 'low' | 'medium' | 'high' | 'critical';
+  createdAt: string;
+  expiresAt: string;
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
+};
+
+type JarvisQueryResult = {
+  kind: string;
+  answer: string;
+  provider: string;
+  attempts: string[];
+  images?: string[];
+  requestId?: string;
+  model?: string;
+  task?: { id: string; requestId: string; goal: string; authority: number; risk: string; status: string };
+  requiresApproval?: boolean;
+  approval?: JarvisApprovalRequest;
+  approvalExecution?: boolean;
+};
+
 declare global {
   interface Window {
     jarvis: {
@@ -21,7 +47,11 @@ declare global {
       weather: (latitude: number, longitude: number) => Promise<any>;
       searchLocation: (query: string) => Promise<Array<{ display_name: string; lat: string; lon: string; type?: string }>>;
       systemLogs: () => Promise<{ source: string; lines: string[] }>;
-      query: (input: { query: string; providers: ProviderConfig[]; preferred?: ProviderId; history?: ChatMessage[] }) => Promise<{ kind: string; answer: string; provider: string; attempts: string[]; images?: string[] }>;
+      query: (input: { query: string; providers: ProviderConfig[]; preferred?: ProviderId; history?: ChatMessage[] }) => Promise<JarvisQueryResult>;
+      listApprovals: () => Promise<JarvisApprovalRequest[]>;
+      approveApproval: (id: string) => Promise<JarvisApprovalRequest>;
+      rejectApproval: (id: string) => Promise<boolean>;
+      executeApprovedApproval: (id: string) => Promise<JarvisQueryResult>;
       pythonCapability: (input: { operation: string; payload?: Record<string, any> }) => Promise<any>;
       voiceEmbed: (audioBase64: string) => Promise<number[]>;
       voiceStatus: () => Promise<{ nativeListen: boolean; piper: boolean; kokoro: boolean; edge: boolean; note: string }>;
