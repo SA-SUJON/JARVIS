@@ -9,6 +9,7 @@ import { Orchestrator, type OrchestratorRequest } from "../orchestrator/Orchestr
 import { ApprovalManager, type ApprovalRequest } from "../policy/ApprovalManager.js";
 import { PolicyEngine } from "../policy/PolicyEngine.js";
 import { Planner } from "../planner/Planner.js";
+import { VerificationEngine, type VerificationResult } from "../verification/index.js";
 import type { ModelRouteRequest, ProviderId, ProviderManagerOptions } from "../../providers/types.js";
 import { FailoverManager } from "../../providers/FailoverManager.js";
 import { ModelRegistry } from "../../providers/ModelRegistry.js";
@@ -43,6 +44,7 @@ export interface RuntimeExecutionResult {
   approval?: ApprovalRequest;
   error?: string;
   toolResult?: unknown;
+  verification?: VerificationResult;
 }
 
 type PendingApprovalExecution = {
@@ -62,6 +64,7 @@ export class RuntimeKernel {
   readonly failover: FailoverManager;
   readonly tools: ToolRegistry;
   readonly toolExecutor: ToolExecutor;
+  readonly verification: VerificationEngine;
 
   private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
@@ -77,6 +80,7 @@ export class RuntimeKernel {
     this.tools = options.tools ?? new ToolRegistry();
     if (!options.tools) this.tools.registerMany(createBuiltinTools());
     this.toolExecutor = new ToolExecutor(this.tools, this.events);
+    this.verification = new VerificationEngine(this.events);
     this.orchestrator = new Orchestrator({
       events: this.events,
       planner: this.planner,
@@ -169,11 +173,7 @@ export class RuntimeKernel {
     return decision.request;
   }
 
-  async executeTool(
-    toolId: string,
-    input: Record<string, unknown>,
-    context: ToolContext,
-  ) {
+  async executeTool(toolId: string, input: Record<string, unknown>, context: ToolContext) {
     return this.toolExecutor.execute({ toolId, input, context });
   }
 
@@ -181,11 +181,7 @@ export class RuntimeKernel {
     await this.providers.healthCheckAll();
   }
 
-  private async executeTask(
-    request: RuntimeExecutionRequest,
-    task: Task,
-    requestId: string,
-  ): Promise<RuntimeExecutionResult> {
+  private async executeTask(request: RuntimeExecutionRequest, task: Task, requestId: string): Promise<RuntimeExecutionResult> {
     task.status = "running";
     task.updatedAt = new Date().toISOString();
     const step = task.steps[0];
@@ -198,20 +194,38 @@ export class RuntimeKernel {
         approved: Boolean(request.policyContext?.explicitApproval),
         metadata: { goal: task.goal },
       };
-      const toolResult = await this.executeTool(step.toolId, { goal: task.goal }, context);
+      const toolInput = { goal: task.goal };
+      const toolResult = await this.executeTool(step.toolId, toolInput, context);
       if (!toolResult.ok) {
         step.status = "failed";
         step.error = toolResult.error;
         task.status = "failed";
         task.error = toolResult.error;
         task.updatedAt = new Date().toISOString();
-        return {
-          requestId,
-          task,
-          status: "failed",
-          error: task.error,
-          toolResult,
-        };
+        return { requestId, task, status: "failed", error: task.error, toolResult };
+      }
+
+      step.status = "verifying";
+      task.status = "verifying";
+      task.updatedAt = new Date().toISOString();
+
+      const verification = await this.verification.verify({
+        requestId,
+        taskId: task.id,
+        toolId: step.toolId,
+        input: toolInput,
+        result: toolResult,
+        step,
+      });
+      step.verification = verification;
+
+      if (!verification.verified) {
+        step.status = "failed";
+        step.error = verification.reason;
+        task.status = "failed";
+        task.error = `Verification failed: ${verification.reason}`;
+        task.updatedAt = new Date().toISOString();
+        return { requestId, task, status: "failed", error: task.error, toolResult: toolResult.value, verification };
       }
 
       step.status = "completed";
@@ -219,24 +233,14 @@ export class RuntimeKernel {
       task.status = "completed";
       task.result = toolResult.value;
       task.updatedAt = new Date().toISOString();
-      return {
-        requestId,
-        task,
-        status: "completed",
-        toolResult: toolResult.value,
-      };
+      return { requestId, task, status: "completed", toolResult: toolResult.value, verification };
     }
 
     if (task.authority >= 3) {
       task.status = "failed";
       task.error = "Approval granted, but no state-changing execution tool is bound to this task yet.";
       task.updatedAt = new Date().toISOString();
-      return {
-        requestId,
-        task,
-        status: "failed",
-        error: task.error,
-      };
+      return { requestId, task, status: "failed", error: task.error };
     }
 
     const routeRequest: Omit<ModelRouteRequest, "prompt"> = {
@@ -261,11 +265,7 @@ export class RuntimeKernel {
       task.status = "completed";
       task.result = result.response;
       task.updatedAt = new Date().toISOString();
-
-      await this.events.emit("assistant.responding", result.response, {
-        requestId,
-        taskId: task.id,
-      });
+      await this.events.emit("assistant.responding", result.response, { requestId, taskId: task.id });
 
       return {
         requestId,
@@ -279,13 +279,7 @@ export class RuntimeKernel {
       task.status = "failed";
       task.error = error instanceof Error ? error.message : String(error);
       task.updatedAt = new Date().toISOString();
-
-      return {
-        requestId,
-        task,
-        status: "failed",
-        error: task.error,
-      };
+      return { requestId, task, status: "failed", error: task.error };
     }
   }
 }
