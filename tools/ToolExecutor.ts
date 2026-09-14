@@ -37,7 +37,7 @@ export class ToolExecutor {
     });
 
     try {
-      this.validateArguments(tool.definition.argumentSchema, request.input);
+      validateToolArguments(tool.definition.argumentSchema, request.input);
       this.assertAuthorized(tool, request.context);
       const data = await tool.execute(request.input, request.context) as T;
       const result = this.result<T>(executionId, request.toolId, startedAt, started, {
@@ -81,30 +81,6 @@ export class ToolExecutor {
     };
   }
 
-  private validateArguments(schema: ToolArgumentSchema | undefined, input: ToolArguments): void {
-    if (!schema) return;
-
-    for (const key of schema.required ?? []) {
-      if (!(key in input) || input[key] === undefined || input[key] === null) {
-        throw new Error(`Missing required tool argument: ${key}`);
-      }
-    }
-
-    const allowed = new Set(Object.keys(schema.properties));
-    if (schema.additionalProperties === false) {
-      for (const key of Object.keys(input)) {
-        if (!allowed.has(key)) throw new Error(`Unexpected tool argument: ${key}`);
-      }
-    }
-
-    for (const [key, property] of Object.entries(schema.properties)) {
-      if (!(key in input) || input[key] === undefined || input[key] === null) continue;
-      if (typeof input[key] !== property.type) {
-        throw new Error(`Invalid tool argument '${key}': expected ${property.type}, received ${typeof input[key]}`);
-      }
-    }
-  }
-
   private assertAuthorized(tool: Tool, context: ToolContext): void {
     const required = tool.definition.authority;
 
@@ -114,6 +90,30 @@ export class ToolExecutor {
 
     if (required >= 2 && !context.approved) {
       throw new Error(`Approval required before executing tool: ${tool.definition.id}`);
+    }
+  }
+}
+
+export function validateToolArguments(schema: ToolArgumentSchema | undefined, input: ToolArguments): void {
+  if (!schema) return;
+
+  for (const key of schema.required ?? []) {
+    if (!(key in input) || input[key] === undefined || input[key] === null) {
+      throw new Error(`Missing required tool argument: ${key}`);
+    }
+  }
+
+  const allowed = new Set(Object.keys(schema.properties));
+  if (schema.additionalProperties === false) {
+    for (const key of Object.keys(input)) {
+      if (!allowed.has(key)) throw new Error(`Unexpected tool argument: ${key}`);
+    }
+  }
+
+  for (const [key, property] of Object.entries(schema.properties)) {
+    if (!(key in input) || input[key] === undefined || input[key] === null) continue;
+    if (typeof input[key] !== property.type) {
+      throw new Error(`Invalid tool argument '${key}': expected ${property.type}, received ${typeof input[key]}`);
     }
   }
 }
