@@ -57,7 +57,7 @@ class ControlledToolVerifier implements Verifier {
   }
 
   private async verifyWrite(request: VerificationRequest): Promise<VerificationResult> {
-    const value = (request.result.value ?? {}) as Record<string, unknown>;
+    const value = (request.result.data ?? {}) as Record<string, unknown>;
     const relativePath = String(value.path ?? "");
     if (!relativePath) return { status: "failed", verified: false, reason: "Write tool returned no target path." };
     try {
@@ -77,7 +77,7 @@ class ControlledToolVerifier implements Verifier {
   }
 
   private async verifyDelete(request: VerificationRequest): Promise<VerificationResult> {
-    const value = (request.result.value ?? {}) as Record<string, unknown>;
+    const value = (request.result.data ?? {}) as Record<string, unknown>;
     const relativePath = String(value.path ?? "");
     if (!relativePath) return { status: "failed", verified: false, reason: "Delete tool returned no target path." };
     try {
@@ -92,7 +92,7 @@ class ControlledToolVerifier implements Verifier {
   }
 
   private async verifyOpenApp(request: VerificationRequest): Promise<VerificationResult> {
-    const value = (request.result.value ?? {}) as Record<string, unknown>;
+    const value = (request.result.data ?? {}) as Record<string, unknown>;
     const application = String(value.application ?? "");
     const command = String(value.command ?? "");
     const running = await verifyApplication(command);
