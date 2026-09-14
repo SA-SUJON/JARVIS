@@ -2,13 +2,12 @@ import type {
   ChatMessage,
   ProviderResponse,
   Task,
-  ToolContext,
 } from "../contracts/types.js";
 import { EventBus } from "../events/EventBus.js";
 import { Orchestrator, type OrchestratorRequest } from "../orchestrator/Orchestrator.js";
 import { PolicyEngine } from "../policy/PolicyEngine.js";
 import { Planner } from "../planner/Planner.js";
-import type { ModelRouteRequest, ProviderManagerOptions } from "../../providers/types.js";
+import type { ModelRouteRequest, ProviderId, ProviderManagerOptions } from "../../providers/types.js";
 import { FailoverManager } from "../../providers/FailoverManager.js";
 import { ModelRegistry } from "../../providers/ModelRegistry.js";
 import { ModelRouter } from "../../providers/ModelRouter.js";
@@ -25,7 +24,7 @@ export interface RuntimeKernelOptions {
 export interface RuntimeExecutionRequest extends OrchestratorRequest {
   temperature?: number;
   maxTokens?: number;
-  preferredProvider?: string;
+  preferredProvider?: ProviderId;
   preferredModel?: string;
   taskType?: ModelRouteRequest["taskType"];
 }
@@ -35,7 +34,7 @@ export interface RuntimeExecutionResult {
   task: Task;
   response?: ProviderResponse;
   status: "completed" | "awaiting_approval" | "failed";
-  providerId?: string;
+  providerId?: ProviderId;
   model?: string;
   error?: string;
 }
@@ -57,9 +56,9 @@ export class RuntimeKernel {
     this.planner = new Planner();
     this.policy = new PolicyEngine();
     this.providers = new ProviderManager(options.providers);
-    this.modelRouter = new ModelRouter(this.providers);
+    this.modelRouter = new ModelRouter();
     this.modelRegistry = new ModelRegistry(this.providers);
-    this.failover = new FailoverManager(this.providers, this.modelRouter, this.events);
+    this.failover = new FailoverManager(this.providers, this.modelRouter);
     this.tools = options.tools ?? new ToolRegistry();
     this.toolExecutor = new ToolExecutor(this.tools, this.events);
     this.orchestrator = new Orchestrator({
@@ -116,7 +115,7 @@ export class RuntimeKernel {
         requestId: orchestration.requestId,
         task: orchestration.task,
         response: result.response,
-        providerId: result.providerId,
+        providerId: result.response.providerId as ProviderId,
         model: result.response.model,
         status: "completed",
       };
@@ -137,7 +136,7 @@ export class RuntimeKernel {
   async executeTool(
     toolId: string,
     input: Record<string, unknown>,
-    context: ToolContext,
+    context: import("../contracts/types.js").ToolContext,
   ) {
     return this.toolExecutor.execute({ toolId, input, context });
   }
