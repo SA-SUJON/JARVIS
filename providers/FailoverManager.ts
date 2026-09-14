@@ -1,4 +1,5 @@
 import type { ProviderRequest, ProviderResponse } from "../core/contracts/types.js";
+import { EventBus } from "../core/events/EventBus.js";
 import { ModelRouter } from "./ModelRouter.js";
 import { ProviderManager } from "./ProviderManager.js";
 import type { ModelRouteRequest, ProviderCallResult, ProviderId } from "./types.js";
@@ -7,6 +8,7 @@ export class FailoverManager {
   constructor(
     private readonly providerManager: ProviderManager,
     private readonly modelRouter = new ModelRouter(),
+    private readonly events?: EventBus,
   ) {}
 
   async generate(
@@ -32,12 +34,27 @@ export class FailoverManager {
       try {
         const response: ProviderResponse = await this.providerManager.generate(candidate.providerId, {
           ...request,
-          model: routingRequest.preferredModel ?? candidate.model,
+          model: candidate.model,
+        });
+        await this.events?.emit("provider.switched", {
+          providerId: candidate.providerId,
+          model: candidate.model,
+          attempts,
+        }, {
+          requestId: request.requestId,
         });
         return { response, attempts, failedProviders };
       } catch (error) {
         lastError = error;
         failedProviders.push(candidate.providerId);
+        await this.events?.emit("provider.failed", {
+          providerId: candidate.providerId,
+          model: candidate.model,
+          attempt: attempts,
+          error: error instanceof Error ? error.message : String(error),
+        }, {
+          requestId: request.requestId,
+        });
       }
     }
 
@@ -46,5 +63,12 @@ export class FailoverManager {
         lastError instanceof Error ? lastError.message : String(lastError)
       }`,
     );
+  }
+
+  async execute(
+    request: ProviderRequest,
+    route: Omit<ModelRouteRequest, "prompt"> = {},
+  ): Promise<ProviderCallResult> {
+    return this.generate(request, route);
   }
 }
