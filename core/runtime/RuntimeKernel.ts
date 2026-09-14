@@ -2,6 +2,7 @@ import type {
   ChatMessage,
   ProviderResponse,
   Task,
+  TaskExecutionReceipt,
   TaskStep,
   ToolContext,
 } from "../contracts/types.js";
@@ -191,6 +192,15 @@ export class RuntimeKernel {
     await this.providers.healthCheckAll();
   }
 
+  private recordExecution(task: Task, receipt: Omit<TaskExecutionReceipt, "id">): void {
+    task.executionHistory ??= [];
+    task.executionHistory.push({ id: crypto.randomUUID(), ...receipt });
+  }
+
+  private nextAttempt(task: Task, stepId: string): number {
+    return (task.executionHistory ?? []).filter((entry) => entry.stepId === stepId).length + 1;
+  }
+
   private failTask(task: Task, error: string): RuntimeExecutionResult {
     if (!this.executionState.canTransition(task.status, "failed")) throw new Error(`Cannot fail task from state: ${task.status}`);
     this.executionState.transition(task, "failed");
@@ -206,6 +216,8 @@ export class RuntimeKernel {
     if (task.status !== "replanning") this.executionState.transition(task, "replanning");
     this.executionState.transition(task, "running");
     this.executionState.transition(step, "running");
+    step.error = undefined;
+    step.verification = undefined;
     return true;
   }
 
@@ -232,7 +244,7 @@ export class RuntimeKernel {
       return this.failTask(task, step.error);
     }
 
-    this.executionState.transition(step, "running");
+    if (step.status !== "running") this.executionState.transition(step, "running");
     if (task.status !== "running") this.executionState.transition(task, "running");
 
     let toolInput: Record<string, unknown>;
@@ -252,7 +264,20 @@ export class RuntimeKernel {
       metadata: { goal: task.goal, stepId: step.id },
     };
     const toolResult = await this.executeTool(step.toolId, toolInput, context);
+    const attempt = this.nextAttempt(task, step.id);
+
     if (!toolResult.ok) {
+      this.recordExecution(task, {
+        stepId: step.id,
+        toolId: step.toolId,
+        attempt,
+        outcome: "tool_failure",
+        executionId: toolResult.executionId,
+        startedAt: toolResult.metadata.startedAt,
+        completedAt: toolResult.metadata.completedAt,
+        error: toolResult.error || "Tool execution failed.",
+      });
+
       if (this.retryStep(task, step, toolResult.error || "Tool execution failed.")) {
         return this.executeToolStep(request, task, requestId, step);
       }
@@ -275,6 +300,17 @@ export class RuntimeKernel {
     step.verification = verification;
 
     if (!verification.verified) {
+      this.recordExecution(task, {
+        stepId: step.id,
+        toolId: step.toolId,
+        attempt,
+        outcome: "verification_failure",
+        executionId: toolResult.executionId,
+        startedAt: toolResult.metadata.startedAt,
+        completedAt: toolResult.metadata.completedAt,
+        error: `Verification failed: ${verification.reason}`,
+      });
+
       if (this.retryStep(task, step, `Verification failed: ${verification.reason}`)) {
         return this.executeToolStep(request, task, requestId, step);
       }
@@ -282,6 +318,16 @@ export class RuntimeKernel {
       step.error = verification.reason;
       return this.failTask(task, `Verification failed: ${verification.reason}`);
     }
+
+    this.recordExecution(task, {
+      stepId: step.id,
+      toolId: step.toolId,
+      attempt,
+      outcome: "success",
+      executionId: toolResult.executionId,
+      startedAt: toolResult.metadata.startedAt,
+      completedAt: toolResult.metadata.completedAt,
+    });
 
     this.executionState.transition(step, "completed");
     step.result = toolResult.data;
