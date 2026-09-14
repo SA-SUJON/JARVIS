@@ -102,7 +102,9 @@ test.describe("MARK_05 core", () => {
     });
 
     expect(success.ok).toBe(true);
-    expect(success.value).toEqual({ echoed: "hello" });
+    expect(success.data).toEqual({ echoed: "hello" });
+    expect(success.executionId).toBeTruthy();
+    expect(success.metadata.durationMs).toBeGreaterThanOrEqual(0);
 
     const blockedRegistry = new ToolRegistry();
     blockedRegistry.register(makeTool(3));
@@ -116,6 +118,8 @@ test.describe("MARK_05 core", () => {
 
     expect(blocked.ok).toBe(false);
     expect(blocked.error).toContain("Insufficient authority");
+    expect(blocked.executionId).toBeTruthy();
+    expect(blocked.metadata.completedAt).toBeTruthy();
   });
 
   test("event bus supports subscription and unsubscribe", async () => {
