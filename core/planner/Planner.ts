@@ -69,7 +69,7 @@ export class Planner {
   private splitCompoundRequest(input: string): string[] {
     return input
       .trim()
-      .split(/\s+then\s+(?=(?:open|launch|start|create|write|edit|modify|delete|read)\b)/i)
+      .split(/\s+then\s+(?=(?:open|launch|start|create|read|view|show|write|edit|modify|delete)\b)/i)
       .map((segment) => segment.trim())
       .filter(Boolean);
   }
@@ -82,15 +82,15 @@ export class Planner {
         return app ? { toolId: "system.open_app", arguments: { app } } : undefined;
       }
       case "file_operation": {
+        const readMatch = input.match(/^\s*(?:read|view|show)\s+(?:the\s+)?(?:file\s+)?["']?([^"'\n]+?)["']?\s*$/i);
+        if (readMatch) {
+          const filePath = stripQuotes(readMatch[1]);
+          return filePath ? { toolId: "filesystem.read_text", arguments: { path: filePath } } : undefined;
+        }
         const deleteMatch = input.match(/^\s*delete\s+(?:the\s+)?(?:file\s+)?["']?([^"'\n]+?)["']?\s*$/i);
         if (deleteMatch) {
           const filePath = stripQuotes(deleteMatch[1]);
           return filePath ? { toolId: "filesystem.delete_file", arguments: { path: filePath } } : undefined;
-        }
-        const readMatch = input.match(/^\s*(?:read|open)\s+(?:the\s+)?(?:file|document)\s+["']?([^"'\n]+?)["']?\s*$/i);
-        if (readMatch) {
-          const filePath = stripQuotes(readMatch[1]);
-          return filePath ? { toolId: "filesystem.read_text", arguments: { path: filePath } } : undefined;
         }
         const writeMatch = input.match(/^\s*(?:create|write|edit|modify)\s+(?:the\s+)?(?:file\s+)?(.+?)\s+with\s+(?:the\s+)?content\s*[:=]\s*([\s\S]*)\s*$/i);
         if (writeMatch) {
