@@ -29,6 +29,8 @@ export type EventName =
   | "tool.approved"
   | "tool.executed"
   | "tool.failed"
+  | "tool.verified"
+  | "verification.failed"
   | "agent.started"
   | "agent.finished"
   | "memory.created"
@@ -132,6 +134,7 @@ export interface TaskStep {
   toolId?: string;
   status: TaskStatus;
   result?: unknown;
+  verification?: unknown;
   error?: string;
 }
 
