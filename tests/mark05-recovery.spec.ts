@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { RecoveryEngine } from "../core/runtime/RecoveryEngine.js";
 import { ExecutionStateMachine } from "../core/runtime/ExecutionStateMachine.js";
-import type { Task, TaskStep } from "../core/contracts/types.js";
+import { RuntimeKernel } from "../core/runtime/RuntimeKernel.js";
+import { ToolRegistry } from "../tools/ToolRegistry.js";
+import type { Task, TaskStep, Tool } from "../core/contracts/types.js";
 
 const makeTask = (): Task => ({
   id: "task-recovery",
@@ -66,5 +68,64 @@ test.describe("MARK_05 recovery", () => {
     });
     expect(task.authority).toBe(1);
     expect(step.arguments).toEqual({ value: "x" });
+  });
+
+  test("runtime retries a failed verification without illegal running-to-running transition", async () => {
+    let executions = 0;
+    const tool: Tool = {
+      definition: {
+        id: "test.unverified",
+        name: "Unverified test tool",
+        description: "Test-only tool with no registered verifier.",
+        authority: 0,
+        risk: "low",
+      },
+      async execute() {
+        executions += 1;
+        return { attempt: executions };
+      },
+    };
+
+    const tools = new ToolRegistry();
+    tools.register(tool);
+    const runtime = new RuntimeKernel({ tools });
+    const requestId = "runtime-recovery-test";
+    const task: Task = {
+      id: "task-runtime-recovery",
+      requestId,
+      status: "planning",
+      goal: "retry unverified test tool",
+      authority: 0,
+      risk: "low",
+      steps: [
+        {
+          id: "step-runtime-recovery",
+          description: "run unverified test tool",
+          toolId: tool.definition.id,
+          arguments: {},
+          status: "pending",
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    runtime.orchestrator.execute = async () => ({
+      requestId,
+      intent: { kind: "conversation", authority: 0, risk: "low" } as never,
+      task,
+      route: { kind: "conversation" } as never,
+      status: "completed",
+    });
+
+    const result = await runtime.execute({ requestId, input: task.goal });
+
+    expect(result.status).toBe("failed");
+    expect(task.status).toBe("failed");
+    expect(executions).toBe(2);
+    expect(task.executionHistory).toHaveLength(2);
+    expect(task.executionHistory?.map((receipt) => receipt.attempt)).toEqual([1, 2]);
+    expect(task.executionHistory?.every((receipt) => receipt.outcome === "verification_failure")).toBe(true);
+    expect(task.recovery?.attemptsByStep["step-runtime-recovery"]).toBe(2);
   });
 });
