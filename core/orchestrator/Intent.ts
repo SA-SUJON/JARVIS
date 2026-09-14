@@ -46,6 +46,7 @@ const RULES: Array<{
     requiresPlanning: true,
     patterns: [
       /\b(create|write|edit|modify|delete|rename|move)\b.+\b(files?|folders?|directories?|documents?)\b/i,
+      /\b(read|open)\b.+\b(file|document)\b/i,
     ],
   },
   {
