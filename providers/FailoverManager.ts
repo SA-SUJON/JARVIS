@@ -14,8 +14,8 @@ export class FailoverManager {
     route: Omit<ModelRouteRequest, "prompt"> = {},
   ): Promise<ProviderCallResult> {
     const routingRequest: ModelRouteRequest = {
-      prompt: request.prompt,
       ...route,
+      prompt: request.prompt,
     };
 
     const runtimes = this.providerManager.getRuntimes();
