@@ -11,35 +11,40 @@ export class FailoverManager {
 
   async generate(
     request: ProviderRequest,
-    route: ModelRouteRequest = {}
+    route: Omit<ModelRouteRequest, "prompt"> = {},
   ): Promise<ProviderCallResult> {
+    const routingRequest: ModelRouteRequest = {
+      prompt: request.prompt,
+      ...route,
+    };
+
     const runtimes = this.providerManager.getRuntimes();
-    const ranked = this.modelRouter.rank(route, runtimes);
+    const ranked = this.modelRouter.rank(routingRequest, runtimes);
     const failedProviders: ProviderId[] = [];
     let attempts = 0;
     let lastError: unknown = new Error("No configured providers are available");
 
     for (const candidate of ranked) {
-      const provider = this.providerManager.get(candidate.definition.id);
+      const provider = this.providerManager.get(candidate.providerId);
       if (!provider) continue;
 
       attempts += 1;
       try {
-        const response: ProviderResponse = await this.providerManager.generate(candidate.definition.id, {
+        const response: ProviderResponse = await this.providerManager.generate(candidate.providerId, {
           ...request,
-          model: route.preferredModel ?? candidate.model,
+          model: routingRequest.preferredModel ?? candidate.model,
         });
         return { response, attempts, failedProviders };
       } catch (error) {
         lastError = error;
-        failedProviders.push(candidate.definition.id);
+        failedProviders.push(candidate.providerId);
       }
     }
 
     throw new Error(
       `JARVIS provider failover exhausted after ${attempts} attempt(s): ${
         lastError instanceof Error ? lastError.message : String(lastError)
-      }`
+      }`,
     );
   }
 }
