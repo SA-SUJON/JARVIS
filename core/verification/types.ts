@@ -3,6 +3,8 @@ import type { TaskStep, ToolExecutionResult } from "../../tools/types.js";
 export type VerificationStatus = "verified" | "failed" | "unsupported";
 
 export interface VerificationRequest {
+  requestId?: string;
+  taskId?: string;
   toolId: string;
   input: Record<string, unknown>;
   result: ToolExecutionResult;
