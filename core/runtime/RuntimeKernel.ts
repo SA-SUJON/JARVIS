@@ -186,6 +186,20 @@ export class RuntimeKernel {
     task.status = "running";
     task.updatedAt = new Date().toISOString();
 
+    // MARK_05 must never turn an approval into a hallucinated side effect.
+    // State-changing tasks stay inert until a concrete, policy-bound tool is registered.
+    if (task.authority >= 3) {
+      task.status = "failed";
+      task.error = "Approval granted, but no state-changing execution tool is bound to this task yet.";
+      task.updatedAt = new Date().toISOString();
+      return {
+        requestId,
+        task,
+        status: "failed",
+        error: task.error,
+      };
+    }
+
     const routeRequest: Omit<ModelRouteRequest, "prompt"> = {
       preferredProvider: request.preferredProvider,
       preferredModel: request.preferredModel,
