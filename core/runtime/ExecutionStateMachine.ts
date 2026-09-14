@@ -4,10 +4,11 @@ type StatefulExecution = Pick<Task, "status" | "updatedAt"> | Pick<TaskStep, "st
 
 const ALLOWED_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   pending: ["planning", "running", "cancelled", "failed"],
-  planning: ["awaiting_approval", "running", "failed", "cancelled"],
+  planning: ["awaiting_approval", "running", "replanning", "failed", "cancelled"],
   awaiting_approval: ["running", "failed", "cancelled"],
-  running: ["verifying", "completed", "failed", "cancelled"],
-  verifying: ["running", "completed", "failed", "cancelled"],
+  running: ["verifying", "completed", "replanning", "failed", "cancelled"],
+  verifying: ["running", "completed", "replanning", "failed", "cancelled"],
+  replanning: ["running", "failed", "cancelled"],
   completed: [],
   failed: [],
   cancelled: [],
