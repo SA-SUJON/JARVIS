@@ -1,6 +1,6 @@
 export { SearchTool } from "./browser/SearchTool.js";
 export { CurrentTimeTool } from "./system/CurrentTimeTool.js";
-export { controlledTools, deleteFileTool, openAppTool, writeTextFileTool } from "./ControlledTools.js";
+export { controlledTools, deleteFileTool, openAppTool, readTextFileTool, writeTextFileTool } from "./ControlledTools.js";
 
 import type { Tool } from "../../core/contracts/types.js";
 import { SearchTool } from "./browser/SearchTool.js";
