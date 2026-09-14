@@ -227,8 +227,8 @@ export class RuntimeKernel {
     const toolResult = await this.executeTool(step.toolId, toolInput, context);
     if (!toolResult.ok) {
       step.status = "failed";
-      step.error = toolResult.error;
-      return this.failTask(task, toolResult.error);
+      step.error = toolResult.error || "Tool execution failed.";
+      return this.failTask(task, step.error);
     }
 
     step.status = "verifying";
