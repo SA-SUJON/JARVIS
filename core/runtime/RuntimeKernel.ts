@@ -6,11 +6,11 @@ import type {
   ToolContext,
 } from "../contracts/types.js";
 import { EventBus } from "../events/EventBus.js";
+import { ExecutionStateMachine } from "./ExecutionStateMachine.js";
 import { Orchestrator, type OrchestratorRequest } from "../orchestrator/Orchestrator.js";
 import { ApprovalManager, type ApprovalRequest } from "../policy/ApprovalManager.js";
 import { PolicyEngine } from "../policy/PolicyEngine.js";
 import { Planner } from "../planner/Planner.js";
-import { ExecutionStateMachine } from "./ExecutionStateMachine.js";
 import { VerificationEngine, type VerificationResult } from "../verification/index.js";
 import type { ModelRouteRequest, ProviderId, ProviderManagerOptions } from "../../providers/types.js";
 import { FailoverManager } from "../../providers/FailoverManager.js";
@@ -67,7 +67,7 @@ export class RuntimeKernel {
   readonly tools: ToolRegistry;
   readonly toolExecutor: ToolExecutor;
   readonly verification: VerificationEngine;
-  readonly stateMachine: ExecutionStateMachine;
+  readonly executionState: ExecutionStateMachine;
 
   private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
@@ -84,7 +84,7 @@ export class RuntimeKernel {
     if (!options.tools) this.tools.registerMany(createBuiltinTools());
     this.toolExecutor = new ToolExecutor(this.tools, this.events);
     this.verification = new VerificationEngine(this.events);
-    this.stateMachine = new ExecutionStateMachine();
+    this.executionState = new ExecutionStateMachine();
     this.orchestrator = new Orchestrator({
       events: this.events,
       planner: this.planner,
@@ -186,7 +186,8 @@ export class RuntimeKernel {
   }
 
   private failTask(task: Task, error: string): RuntimeExecutionResult {
-    this.stateMachine.transition(task, "failed");
+    if (!this.executionState.canTransition(task.status, "failed")) throw new Error(`Cannot fail task from state: ${task.status}`);
+    this.executionState.transition(task, "failed");
     task.error = error;
     return { requestId: task.requestId, task, status: "failed", error };
   }
@@ -200,7 +201,7 @@ export class RuntimeKernel {
     if (!step.toolId) return undefined;
 
     if (!step.arguments) {
-      this.stateMachine.transition(step, "failed");
+      step.status = "failed";
       step.error = "Planned tool has no structured arguments.";
       return this.failTask(task, step.error);
     }
@@ -209,13 +210,13 @@ export class RuntimeKernel {
       task.steps.find((candidate) => candidate.id === dependencyId)?.status !== "completed",
     );
     if (unmetDependencies.length) {
-      this.stateMachine.transition(step, "failed");
+      step.status = "failed";
       step.error = `Step dependencies are not complete: ${unmetDependencies.join(", ")}`;
       return this.failTask(task, step.error);
     }
 
-    if (task.status !== "running") this.stateMachine.transition(task, "running");
-    this.stateMachine.transition(step, "running");
+    this.executionState.transition(step, "running");
+    if (task.status !== "running") this.executionState.transition(task, "running");
 
     const context: ToolContext = {
       requestId,
@@ -227,13 +228,13 @@ export class RuntimeKernel {
     const toolInput = step.arguments;
     const toolResult = await this.executeTool(step.toolId, toolInput, context);
     if (!toolResult.ok) {
-      this.stateMachine.transition(step, "failed");
+      this.executionState.transition(step, "failed");
       step.error = toolResult.error || "Tool execution failed.";
       return this.failTask(task, step.error);
     }
 
-    this.stateMachine.transition(step, "verifying");
-    this.stateMachine.transition(task, "verifying");
+    this.executionState.transition(step, "verifying");
+    this.executionState.transition(task, "verifying");
 
     const verification = await this.verification.verify({
       requestId,
@@ -246,24 +247,25 @@ export class RuntimeKernel {
     step.verification = verification;
 
     if (!verification.verified) {
-      this.stateMachine.transition(step, "failed");
+      this.executionState.transition(step, "failed");
       step.error = verification.reason;
       return this.failTask(task, `Verification failed: ${verification.reason}`);
     }
 
-    this.stateMachine.transition(step, "completed");
-    step.result = toolResult.value;
+    this.executionState.transition(step, "completed");
+    step.result = toolResult.data;
     return undefined;
   }
 
   private async executeTask(request: RuntimeExecutionRequest, task: Task, requestId: string): Promise<RuntimeExecutionResult> {
-    if (task.status !== "running") this.stateMachine.transition(task, "running");
+    if (task.status === "planning") this.executionState.transition(task, "running");
 
     if (task.steps.some((step) => step.toolId)) {
       let lastToolResult: unknown;
       let lastVerification: VerificationResult | undefined;
 
       for (const step of task.steps) {
+        if (task.status === "verifying") this.executionState.transition(task, "running");
         const result = await this.executeToolStep(request, task, requestId, step);
         if (result) return { ...result, requestId };
         if (step.toolId) {
@@ -272,7 +274,7 @@ export class RuntimeKernel {
         }
       }
 
-      this.stateMachine.transition(task, "completed");
+      this.executionState.transition(task, "completed");
       task.result = lastToolResult;
       return {
         requestId,
@@ -306,7 +308,7 @@ export class RuntimeKernel {
         routeRequest,
       );
 
-      this.stateMachine.transition(task, "completed");
+      this.executionState.transition(task, "completed");
       task.result = result.response;
       await this.events.emit("assistant.responding", result.response, { requestId, taskId: task.id });
 
