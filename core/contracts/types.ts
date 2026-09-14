@@ -35,14 +35,28 @@ export type EventName =
   | "identity.detected"
   | "security.blocked";
 
+export type ChatRole = "system" | "user" | "assistant";
+
+export interface ChatMessage {
+  role: ChatRole;
+  content: string;
+}
+
+export interface ModelInfo {
+  id: string;
+  label: string;
+  provider: string;
+  tier?: "free" | "paid";
+  context?: number;
+  capabilities?: string[];
+  created?: number | string;
+}
+
 export interface ProviderRequest {
   requestId: string;
   prompt: string;
   systemPrompt?: string;
-  history?: Array<{
-    role: "system" | "user" | "assistant";
-    content: string;
-  }>;
+  history?: ChatMessage[];
   model?: string;
   temperature?: number;
   maxTokens?: number;
