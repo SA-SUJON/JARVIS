@@ -2,6 +2,7 @@ import type {
   ChatMessage,
   ProviderResponse,
   Task,
+  TaskStep,
   ToolContext,
 } from "../contracts/types.js";
 import { EventBus } from "../events/EventBus.js";
@@ -181,75 +182,111 @@ export class RuntimeKernel {
     await this.providers.healthCheckAll();
   }
 
+  private failTask(task: Task, error: string): RuntimeExecutionResult {
+    task.status = "failed";
+    task.error = error;
+    task.updatedAt = new Date().toISOString();
+    return { requestId: task.requestId, task, status: "failed", error };
+  }
+
+  private async executeToolStep(
+    request: RuntimeExecutionRequest,
+    task: Task,
+    requestId: string,
+    step: TaskStep,
+  ): Promise<RuntimeExecutionResult | undefined> {
+    if (!step.toolId) return undefined;
+
+    if (!step.arguments) {
+      step.status = "failed";
+      step.error = "Planned tool has no structured arguments.";
+      return this.failTask(task, step.error);
+    }
+
+    const unmetDependencies = (step.dependsOn || []).filter((dependencyId) =>
+      task.steps.find((candidate) => candidate.id === dependencyId)?.status !== "completed",
+    );
+    if (unmetDependencies.length) {
+      step.status = "failed";
+      step.error = `Step dependencies are not complete: ${unmetDependencies.join(", ")}`;
+      return this.failTask(task, step.error);
+    }
+
+    step.status = "running";
+    task.status = "running";
+    task.updatedAt = new Date().toISOString();
+
+    const context: ToolContext = {
+      requestId,
+      taskId: task.id,
+      authority: task.authority,
+      approved: Boolean(request.policyContext?.explicitApproval),
+      metadata: { goal: task.goal, stepId: step.id },
+    };
+    const toolInput = step.arguments;
+    const toolResult = await this.executeTool(step.toolId, toolInput, context);
+    if (!toolResult.ok) {
+      step.status = "failed";
+      step.error = toolResult.error;
+      return this.failTask(task, toolResult.error);
+    }
+
+    step.status = "verifying";
+    task.status = "verifying";
+    task.updatedAt = new Date().toISOString();
+
+    const verification = await this.verification.verify({
+      requestId,
+      taskId: task.id,
+      toolId: step.toolId,
+      input: toolInput,
+      result: toolResult,
+      step,
+    });
+    step.verification = verification;
+
+    if (!verification.verified) {
+      step.status = "failed";
+      step.error = verification.reason;
+      return this.failTask(task, `Verification failed: ${verification.reason}`);
+    }
+
+    step.status = "completed";
+    step.result = toolResult.value;
+    return undefined;
+  }
+
   private async executeTask(request: RuntimeExecutionRequest, task: Task, requestId: string): Promise<RuntimeExecutionResult> {
     task.status = "running";
     task.updatedAt = new Date().toISOString();
-    const step = task.steps[0];
 
-    if (step?.toolId) {
-      if (!step.arguments) {
-        step.status = "failed";
-        step.error = "Planned tool has no structured arguments.";
-        task.status = "failed";
-        task.error = step.error;
-        task.updatedAt = new Date().toISOString();
-        return { requestId, task, status: "failed", error: task.error };
+    if (task.steps.some((step) => step.toolId)) {
+      let lastToolResult: unknown;
+      let lastVerification: VerificationResult | undefined;
+
+      for (const step of task.steps) {
+        const result = await this.executeToolStep(request, task, requestId, step);
+        if (result) return { ...result, requestId };
+        if (step.toolId) {
+          lastToolResult = step.result;
+          lastVerification = step.verification as VerificationResult | undefined;
+        }
       }
 
-      const context: ToolContext = {
-        requestId,
-        taskId: task.id,
-        authority: task.authority,
-        approved: Boolean(request.policyContext?.explicitApproval),
-        metadata: { goal: task.goal },
-      };
-      const toolInput = step.arguments;
-      const toolResult = await this.executeTool(step.toolId, toolInput, context);
-      if (!toolResult.ok) {
-        step.status = "failed";
-        step.error = toolResult.error;
-        task.status = "failed";
-        task.error = toolResult.error;
-        task.updatedAt = new Date().toISOString();
-        return { requestId, task, status: "failed", error: task.error, toolResult };
-      }
-
-      step.status = "verifying";
-      task.status = "verifying";
-      task.updatedAt = new Date().toISOString();
-
-      const verification = await this.verification.verify({
-        requestId,
-        taskId: task.id,
-        toolId: step.toolId,
-        input: toolInput,
-        result: toolResult,
-        step,
-      });
-      step.verification = verification;
-
-      if (!verification.verified) {
-        step.status = "failed";
-        step.error = verification.reason;
-        task.status = "failed";
-        task.error = `Verification failed: ${verification.reason}`;
-        task.updatedAt = new Date().toISOString();
-        return { requestId, task, status: "failed", error: task.error, toolResult: toolResult.value, verification };
-      }
-
-      step.status = "completed";
-      step.result = toolResult.value;
       task.status = "completed";
-      task.result = toolResult.value;
+      task.result = lastToolResult;
       task.updatedAt = new Date().toISOString();
-      return { requestId, task, status: "completed", toolResult: toolResult.value, verification };
+      return {
+        requestId,
+        task,
+        status: "completed",
+        toolResult: lastToolResult,
+        verification: lastVerification,
+      };
     }
 
     if (task.authority >= 3) {
-      task.status = "failed";
-      task.error = "Approval granted, but no state-changing execution tool is bound to this task yet.";
-      task.updatedAt = new Date().toISOString();
-      return { requestId, task, status: "failed", error: task.error };
+      return this.failTask(task, "Approval granted, but no state-changing execution tool is bound to this task yet.");
     }
 
     const routeRequest: Omit<ModelRouteRequest, "prompt"> = {
@@ -285,10 +322,7 @@ export class RuntimeKernel {
         status: "completed",
       };
     } catch (error) {
-      task.status = "failed";
-      task.error = error instanceof Error ? error.message : String(error);
-      task.updatedAt = new Date().toISOString();
-      return { requestId, task, status: "failed", error: task.error };
+      return this.failTask(task, error instanceof Error ? error.message : String(error));
     }
   }
 }
