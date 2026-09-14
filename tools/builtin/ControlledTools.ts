@@ -19,18 +19,6 @@ function workspacePath(input: unknown): string {
   return resolved;
 }
 
-function parseFileGoal(goal: string): { path: string; content?: string } {
-  const match = goal.match(/(?:create|write|edit|modify)\s+(?:the\s+)?(?:file\s+)?["']?([^"'\n]+?)["']?(?:\s+with\s+(?:the\s+)?content\s*[:=]\s*["']([\s\S]*)["'])?$/i);
-  if (!match) throw new Error("Could not parse a safe file write request. Use: create file <path> with content: <text>");
-  return { path: match[1].trim(), content: match[2] ?? "" };
-}
-
-function parseDeleteGoal(goal: string): { path: string } {
-  const match = goal.match(/delete\s+(?:the\s+)?(?:file\s+)?["']?([^"'\n]+?)["']?$/i);
-  if (!match) throw new Error("Could not parse a safe file deletion request. Use: delete file <path>");
-  return { path: match[1].trim() };
-}
-
 export const openAppTool: Tool = {
   definition: {
     id: "system.open_app",
@@ -40,7 +28,9 @@ export const openAppTool: Tool = {
     risk: "low",
   },
   async execute(input: Record<string, unknown>, _context: ToolContext) {
-    const requested = String(input.app ?? input.application ?? "").trim().toLowerCase();
+    const requested = String(input.app ?? "").trim().toLowerCase();
+    if (!requested) throw new Error("An application name is required.");
+
     const apps: Record<string, { windows: string; linux?: string; macos?: string }> = {
       notepad: { windows: "notepad.exe", linux: "gedit", macos: "TextEdit" },
       calculator: { windows: "calc.exe", linux: "gnome-calculator", macos: "Calculator" },
@@ -49,7 +39,7 @@ export const openAppTool: Tool = {
       explorer: { windows: "explorer.exe", linux: "xdg-open", macos: "Finder" },
     };
     const target = apps[requested];
-    if (!target) throw new Error(`Application is not on the JARVIS allowlist: ${requested || "<empty>"}`);
+    if (!target) throw new Error(`Application is not on the JARVIS allowlist: ${requested}`);
 
     const command = process.platform === "win32" ? target.windows : process.platform === "darwin" ? target.macos : target.linux;
     if (!command) throw new Error(`Application is not supported on ${process.platform}.`);
@@ -72,10 +62,10 @@ export const writeTextFileTool: Tool = {
     risk: "medium",
   },
   async execute(input: Record<string, unknown>, _context: ToolContext) {
-    const goal = String(input.goal ?? "").trim();
-    const parsed = goal ? parseFileGoal(goal) : { path: String(input.path ?? ""), content: String(input.content ?? "") };
-    const target = workspacePath(parsed.path);
-    const content = String(input.content ?? parsed.content ?? "");
+    const relativePath = String(input.path ?? "").trim();
+    if (!relativePath) throw new Error("A workspace-relative file path is required.");
+    const target = workspacePath(relativePath);
+    const content = String(input.content ?? "");
     const bytes = Buffer.byteLength(content, "utf8");
     if (bytes > MAX_TEXT_BYTES) throw new Error(`Text payload exceeds the ${MAX_TEXT_BYTES} byte safety limit.`);
     await mkdir(path.dirname(target), { recursive: true });
@@ -94,9 +84,9 @@ export const deleteFileTool: Tool = {
     risk: "medium",
   },
   async execute(input: Record<string, unknown>, _context: ToolContext) {
-    const goal = String(input.goal ?? "").trim();
-    const parsed = goal ? parseDeleteGoal(goal) : { path: String(input.path ?? "") };
-    const target = workspacePath(parsed.path);
+    const relativePath = String(input.path ?? "").trim();
+    if (!relativePath) throw new Error("A workspace-relative file path is required.");
+    const target = workspacePath(relativePath);
     await rm(target, { force: false, recursive: false });
     return { path: path.relative(WORKSPACE_ROOT, target), operation: "delete" };
   },
