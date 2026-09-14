@@ -56,9 +56,19 @@ test.describe("MARK_05 runtime adapter", () => {
     expect(result.task.steps[0]?.arguments).toEqual({ app: "notepad" });
   });
 
+  test("compiles controlled read requests into structured arguments", async () => {
+    const runtime = createMark05Runtime({ providers: DEFAULT_PROVIDERS });
+    const result = await runtime.execute({ input: "read file tests/fixture.txt" });
+
+    expect(result.status).toBe("awaiting_approval");
+    expect(result.task.steps[0]?.toolId).toBe("filesystem.read_text");
+    expect(result.task.steps[0]?.arguments).toEqual({ path: "tests/fixture.txt" });
+  });
+
   test("registers controlled tools in the default runtime", () => {
     const toolIds = createBuiltinTools().map((tool) => tool.definition.id);
     expect(toolIds).toContain("system.open_app");
+    expect(toolIds).toContain("filesystem.read_text");
     expect(toolIds).toContain("filesystem.write_text");
     expect(toolIds).toContain("filesystem.delete_file");
   });
@@ -66,10 +76,12 @@ test.describe("MARK_05 runtime adapter", () => {
   test("declares schemas for controlled tool arguments", () => {
     const tools = createBuiltinTools();
     const openApp = tools.find((tool) => tool.definition.id === "system.open_app");
+    const readText = tools.find((tool) => tool.definition.id === "filesystem.read_text");
     const writeText = tools.find((tool) => tool.definition.id === "filesystem.write_text");
     const deleteFile = tools.find((tool) => tool.definition.id === "filesystem.delete_file");
 
     expect(openApp?.definition.argumentSchema?.required).toEqual(["app"]);
+    expect(readText?.definition.argumentSchema?.required).toEqual(["path"]);
     expect(writeText?.definition.argumentSchema?.required).toEqual(["path", "content"]);
     expect(deleteFile?.definition.argumentSchema?.required).toEqual(["path"]);
   });
