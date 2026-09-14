@@ -20,6 +20,7 @@ import { ProviderManager } from "../../providers/ProviderManager.js";
 import { createBuiltinTools } from "../../tools/builtin/index.js";
 import { ToolExecutor } from "../../tools/ToolExecutor.js";
 import { ToolRegistry } from "../../tools/ToolRegistry.js";
+import { TaskContextStore, resolveToolArguments } from "./TaskContext.js";
 
 export interface RuntimeKernelOptions {
   providers?: ProviderManagerOptions;
@@ -68,6 +69,7 @@ export class RuntimeKernel {
   readonly toolExecutor: ToolExecutor;
   readonly verification: VerificationEngine;
   readonly executionState: ExecutionStateMachine;
+  readonly taskContext: TaskContextStore;
 
   private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
@@ -85,6 +87,7 @@ export class RuntimeKernel {
     this.toolExecutor = new ToolExecutor(this.tools, this.events);
     this.verification = new VerificationEngine(this.events);
     this.executionState = new ExecutionStateMachine();
+    this.taskContext = new TaskContextStore();
     this.orchestrator = new Orchestrator({
       events: this.events,
       planner: this.planner,
@@ -218,6 +221,15 @@ export class RuntimeKernel {
     this.executionState.transition(step, "running");
     if (task.status !== "running") this.executionState.transition(task, "running");
 
+    let toolInput: Record<string, unknown>;
+    try {
+      toolInput = resolveToolArguments(task, step.arguments, this.taskContext);
+    } catch (error) {
+      this.executionState.transition(step, "failed");
+      step.error = error instanceof Error ? error.message : String(error);
+      return this.failTask(task, `Argument reference resolution failed: ${step.error}`);
+    }
+
     const context: ToolContext = {
       requestId,
       taskId: task.id,
@@ -225,7 +237,6 @@ export class RuntimeKernel {
       approved: Boolean(request.policyContext?.explicitApproval),
       metadata: { goal: task.goal, stepId: step.id },
     };
-    const toolInput = step.arguments;
     const toolResult = await this.executeTool(step.toolId, toolInput, context);
     if (!toolResult.ok) {
       this.executionState.transition(step, "failed");
@@ -254,6 +265,11 @@ export class RuntimeKernel {
 
     this.executionState.transition(step, "completed");
     step.result = toolResult.data;
+    this.taskContext.publish(task, step.id, {
+      executionId: toolResult.executionId,
+      data: toolResult.data,
+      metadata: toolResult.metadata,
+    });
     return undefined;
   }
 
