@@ -38,6 +38,7 @@ export type EventName =
   | "security.blocked";
 
 export type ChatRole = "system" | "user" | "assistant";
+export type ToolArguments = Record<string, unknown>;
 
 export interface ChatMessage {
   role: ChatRole;
@@ -82,11 +83,8 @@ export interface ProviderResponse {
 export interface Provider {
   readonly id: string;
   readonly name: string;
-
   isAvailable(): Promise<boolean>;
-
   generate(request: ProviderRequest): Promise<ProviderResponse>;
-
   listModels?(): Promise<string[]>;
 }
 
@@ -106,32 +104,29 @@ export interface ToolDefinition {
   risk: RiskLevel;
 }
 
+export interface ToolCall {
+  toolId: string;
+  arguments: ToolArguments;
+}
+
 export interface Tool {
   readonly definition: ToolDefinition;
-
-  execute(
-    input: Record<string, unknown>,
-    context: ToolContext
-  ): Promise<unknown>;
+  execute(input: ToolArguments, context: ToolContext): Promise<unknown>;
 }
 
 export interface Agent {
   readonly id: string;
   readonly name: string;
   readonly description: string;
-
   canHandle(intent: string): boolean;
-
-  execute(
-    input: Record<string, unknown>,
-    context: ToolContext
-  ): Promise<unknown>;
+  execute(input: Record<string, unknown>, context: ToolContext): Promise<unknown>;
 }
 
 export interface TaskStep {
   id: string;
   description: string;
   toolId?: string;
+  arguments?: ToolArguments;
   status: TaskStatus;
   result?: unknown;
   verification?: unknown;
@@ -160,11 +155,7 @@ export interface PolicyDecision {
 }
 
 export interface Policy {
-  evaluate(
-    authority: AuthorityLevel,
-    risk: RiskLevel,
-    context?: Record<string, unknown>
-  ): Promise<PolicyDecision>;
+  evaluate(authority: AuthorityLevel, risk: RiskLevel, context?: Record<string, unknown>): Promise<PolicyDecision>;
 }
 
 export interface JarvisEvent<T = unknown> {
