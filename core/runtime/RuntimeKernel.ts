@@ -1,7 +1,5 @@
 import type {
-  AuthorityLevel,
   ChatMessage,
-  ProviderRequest,
   ProviderResponse,
   Task,
   ToolContext,
@@ -10,12 +8,11 @@ import { EventBus } from "../events/EventBus.js";
 import { Orchestrator, type OrchestratorRequest } from "../orchestrator/Orchestrator.js";
 import { PolicyEngine } from "../policy/PolicyEngine.js";
 import { Planner } from "../planner/Planner.js";
-import { Router } from "../router/Router.js";
+import type { ModelRouteRequest, ProviderManagerOptions } from "../../providers/types.js";
 import { FailoverManager } from "../../providers/FailoverManager.js";
 import { ModelRegistry } from "../../providers/ModelRegistry.js";
 import { ModelRouter } from "../../providers/ModelRouter.js";
 import { ProviderManager } from "../../providers/ProviderManager.js";
-import type { ProviderManagerOptions, ModelRouteRequest } from "../../providers/types.js";
 import { ToolExecutor } from "../../tools/ToolExecutor.js";
 import { ToolRegistry } from "../../tools/ToolRegistry.js";
 
@@ -83,13 +80,6 @@ export class RuntimeKernel {
         error: orchestration.error,
       };
     }
-
-    const context: ToolContext = {
-      requestId: orchestration.requestId,
-      taskId: orchestration.task.id,
-      authority: orchestration.task.authority,
-      approved: request.policyContext?.explicitApproval === true,
-    };
 
     orchestration.task.status = "running";
     orchestration.task.updatedAt = new Date().toISOString();
