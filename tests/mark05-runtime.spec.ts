@@ -174,6 +174,16 @@ test.describe("MARK_05 runtime adapter", () => {
       expect(completed.task.steps[0]?.verification).toMatchObject({ verified: true, status: "verified" });
       expect(completed.toolResult).toMatchObject({ operation: "write" });
       expect(completed.task.steps[0]?.result).toMatchObject({ operation: "write" });
+      expect(completed.task.executionHistory).toHaveLength(1);
+      expect(completed.task.executionHistory?.[0]).toMatchObject({
+        stepId: completed.task.steps[0]?.id,
+        toolId: "filesystem.write_text",
+        attempt: 1,
+        outcome: "success",
+      });
+      expect(completed.task.executionHistory?.[0]?.executionId).toBeTruthy();
+      expect(completed.task.executionHistory?.[0]?.startedAt).toBeTruthy();
+      expect(completed.task.executionHistory?.[0]?.completedAt).toBeTruthy();
     } finally {
       await rm(target, { force: true });
     }
