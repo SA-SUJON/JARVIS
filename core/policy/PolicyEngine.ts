@@ -7,7 +7,7 @@ export interface PolicyContext {
 
 /**
  * Conservative default policy for MARK_05.
- * Higher-risk capabilities are never silently authorized.
+ * State-changing or externally acting capabilities are never silently authorized.
  */
 export class PolicyEngine implements Policy {
   async evaluate(
@@ -33,12 +33,14 @@ export class PolicyEngine implements Policy {
       };
     }
 
-    if (authority >= 3 || risk === "medium") {
+    if (authority >= 2 || authority >= 3 || risk === "medium") {
       return {
         allowed: Boolean(context.explicitApproval),
         requiresApproval: true,
         authority,
-        reason: "State-changing file operations require explicit approval until tool-level policy is configured.",
+        reason: authority === 2
+          ? "Application control requires explicit approval before execution."
+          : "State-changing file operations require explicit approval before execution.",
       };
     }
 
