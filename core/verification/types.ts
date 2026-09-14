@@ -1,4 +1,5 @@
-import type { TaskStep, ToolExecutionResult } from "../../tools/types.js";
+import type { TaskStep } from "../../core/contracts/types.js";
+import type { ToolExecutionResult } from "../../tools/types.js";
 
 export type VerificationStatus = "verified" | "failed" | "unsupported";
 
