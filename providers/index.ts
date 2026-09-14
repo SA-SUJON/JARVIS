@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./definitions.js";
 export * from "./ModelRouter.js";
+export * from "./ModelRegistry.js";
 export * from "./ProviderManager.js";
 export * from "./FailoverManager.js";
 export * from "./adapters/OpenAICompatibleProvider.js";
