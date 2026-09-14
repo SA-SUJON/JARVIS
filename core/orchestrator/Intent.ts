@@ -44,7 +44,9 @@ const RULES: Array<{
     authority: 3,
     risk: "medium",
     requiresPlanning: true,
-    patterns: [/\b(create|write|edit|modify|delete|rename|move)\b.+\b(file|folder|directory|document)\b/i],
+    patterns: [
+      /\b(create|write|edit|modify|delete|rename|move)\b.+\b(files?|folders?|directories?|documents?)\b/i,
+    ],
   },
   {
     kind: "application_control",
