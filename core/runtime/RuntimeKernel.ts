@@ -187,6 +187,15 @@ export class RuntimeKernel {
     const step = task.steps[0];
 
     if (step?.toolId) {
+      if (!step.arguments) {
+        step.status = "failed";
+        step.error = "Planned tool has no structured arguments.";
+        task.status = "failed";
+        task.error = step.error;
+        task.updatedAt = new Date().toISOString();
+        return { requestId, task, status: "failed", error: task.error };
+      }
+
       const context: ToolContext = {
         requestId,
         taskId: task.id,
@@ -194,7 +203,7 @@ export class RuntimeKernel {
         approved: Boolean(request.policyContext?.explicitApproval),
         metadata: { goal: task.goal },
       };
-      const toolInput = { goal: task.goal };
+      const toolInput = step.arguments;
       const toolResult = await this.executeTool(step.toolId, toolInput, context);
       if (!toolResult.ok) {
         step.status = "failed";
