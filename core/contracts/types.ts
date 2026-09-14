@@ -149,6 +149,24 @@ export interface TaskStep {
   error?: string;
 }
 
+export interface TaskStepContext {
+  executionId: string;
+  data: unknown;
+  metadata: {
+    durationMs: number;
+    startedAt: string;
+    completedAt: string;
+  };
+}
+
+export interface TaskWorkingContext {
+  steps: Record<string, TaskStepContext>;
+}
+
+export interface TaskResultReference {
+  $ref: string;
+}
+
 export interface Task {
   id: string;
   requestId: string;
@@ -159,6 +177,7 @@ export interface Task {
   steps: TaskStep[];
   createdAt: string;
   updatedAt: string;
+  workingContext?: TaskWorkingContext;
   result?: unknown;
   error?: string;
 }
