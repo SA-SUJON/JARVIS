@@ -179,6 +179,20 @@ export interface TaskRecoveryState {
   };
 }
 
+export type TaskExecutionOutcome = "success" | "tool_failure" | "verification_failure";
+
+export interface TaskExecutionReceipt {
+  id: string;
+  stepId: string;
+  toolId: string;
+  attempt: number;
+  outcome: TaskExecutionOutcome;
+  executionId?: string;
+  startedAt: string;
+  completedAt: string;
+  error?: string;
+}
+
 export interface Task {
   id: string;
   requestId: string;
@@ -191,6 +205,7 @@ export interface Task {
   updatedAt: string;
   workingContext?: TaskWorkingContext;
   recovery?: TaskRecoveryState;
+  executionHistory?: TaskExecutionReceipt[];
   result?: unknown;
   error?: string;
 }
