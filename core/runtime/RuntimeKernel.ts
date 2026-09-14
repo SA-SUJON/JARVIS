@@ -43,6 +43,11 @@ export interface RuntimeExecutionResult {
   error?: string;
 }
 
+type PendingApprovalExecution = {
+  request: RuntimeExecutionRequest;
+  task: Task;
+};
+
 export class RuntimeKernel {
   readonly events: EventBus;
   readonly planner: Planner;
@@ -55,6 +60,8 @@ export class RuntimeKernel {
   readonly failover: FailoverManager;
   readonly tools: ToolRegistry;
   readonly toolExecutor: ToolExecutor;
+
+  private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
   constructor(options: RuntimeKernelOptions = {}) {
     this.events = options.events ?? new EventBus();
@@ -79,6 +86,14 @@ export class RuntimeKernel {
 
     if (orchestration.status === "awaiting_approval") {
       const approval = this.approvals.create(orchestration.task);
+      this.pendingExecutions.set(approval.id, {
+        request: {
+          ...request,
+          history: request.history?.map((message) => ({ ...message })),
+          policyContext: request.policyContext ? { ...request.policyContext } : undefined,
+        },
+        task: orchestration.task,
+      });
       return {
         requestId: orchestration.requestId,
         task: orchestration.task,
@@ -97,60 +112,38 @@ export class RuntimeKernel {
       };
     }
 
-    orchestration.task.status = "running";
-    orchestration.task.updatedAt = new Date().toISOString();
+    return this.executeTask(request, orchestration.task, orchestration.requestId);
+  }
 
-    const routeRequest: Omit<ModelRouteRequest, "prompt"> = {
-      preferredProvider: request.preferredProvider,
-      preferredModel: request.preferredModel,
-      taskType: request.taskType ?? "conversation",
+  async executeApproved(id: string): Promise<RuntimeExecutionResult> {
+    const approval = this.consumeApproval(id);
+    const pending = this.pendingExecutions.get(id);
+    if (!pending) {
+      throw new Error("Approved execution payload is no longer available. The action must be requested again.");
+    }
+
+    if (pending.task.id !== approval.taskId || pending.task.requestId !== approval.requestId) {
+      this.pendingExecutions.delete(id);
+      throw new Error("Approval does not match the pending task and has been invalidated.");
+    }
+
+    this.pendingExecutions.delete(id);
+    const authorizedRequest: RuntimeExecutionRequest = {
+      ...pending.request,
+      policyContext: {
+        ...(pending.request.policyContext || {}),
+        explicitApproval: true,
+      },
     };
 
-    try {
-      const result = await this.failover.execute(
-        {
-          requestId: orchestration.requestId,
-          prompt: request.input,
-          systemPrompt: request.systemPrompt,
-          history: request.history as ChatMessage[] | undefined,
-          temperature: request.temperature,
-          maxTokens: request.maxTokens,
-        },
-        routeRequest,
-      );
-
-      orchestration.task.status = "completed";
-      orchestration.task.result = result.response;
-      orchestration.task.updatedAt = new Date().toISOString();
-
-      await this.events.emit("assistant.responding", result.response, {
-        requestId: orchestration.requestId,
-        taskId: orchestration.task.id,
-      });
-
-      return {
-        requestId: orchestration.requestId,
-        task: orchestration.task,
-        response: result.response,
-        providerId: result.response.providerId as ProviderId,
-        model: result.response.model,
-        status: "completed",
-      };
-    } catch (error) {
-      orchestration.task.status = "failed";
-      orchestration.task.error = error instanceof Error ? error.message : String(error);
-      orchestration.task.updatedAt = new Date().toISOString();
-
-      return {
-        requestId: orchestration.requestId,
-        task: orchestration.task,
-        status: "failed",
-        error: orchestration.task.error,
-      };
-    }
+    return this.executeTask(authorizedRequest, pending.task, approval.requestId);
   }
 
   listApprovals(): ApprovalRequest[] {
+    const active = new Set(this.approvals.list().map((approval) => approval.id));
+    for (const id of this.pendingExecutions.keys()) {
+      if (!active.has(id)) this.pendingExecutions.delete(id);
+    }
     return this.approvals.list();
   }
 
@@ -162,6 +155,7 @@ export class RuntimeKernel {
 
   reject(id: string): boolean {
     const decision = this.approvals.reject(id);
+    this.pendingExecutions.delete(id);
     if (!decision.request && !decision.reason) return false;
     return Boolean(decision.request);
   }
@@ -182,5 +176,63 @@ export class RuntimeKernel {
 
   async healthCheck(): Promise<void> {
     await this.providers.healthCheckAll();
+  }
+
+  private async executeTask(
+    request: RuntimeExecutionRequest,
+    task: Task,
+    requestId: string,
+  ): Promise<RuntimeExecutionResult> {
+    task.status = "running";
+    task.updatedAt = new Date().toISOString();
+
+    const routeRequest: Omit<ModelRouteRequest, "prompt"> = {
+      preferredProvider: request.preferredProvider,
+      preferredModel: request.preferredModel,
+      taskType: request.taskType ?? "conversation",
+    };
+
+    try {
+      const result = await this.failover.execute(
+        {
+          requestId,
+          prompt: request.input,
+          systemPrompt: request.systemPrompt,
+          history: request.history as ChatMessage[] | undefined,
+          temperature: request.temperature,
+          maxTokens: request.maxTokens,
+        },
+        routeRequest,
+      );
+
+      task.status = "completed";
+      task.result = result.response;
+      task.updatedAt = new Date().toISOString();
+
+      await this.events.emit("assistant.responding", result.response, {
+        requestId,
+        taskId: task.id,
+      });
+
+      return {
+        requestId,
+        task,
+        response: result.response,
+        providerId: result.response.providerId as ProviderId,
+        model: result.response.model,
+        status: "completed",
+      };
+    } catch (error) {
+      task.status = "failed";
+      task.error = error instanceof Error ? error.message : String(error);
+      task.updatedAt = new Date().toISOString();
+
+      return {
+        requestId,
+        task,
+        status: "failed",
+        error: task.error,
+      };
+    }
   }
 }
