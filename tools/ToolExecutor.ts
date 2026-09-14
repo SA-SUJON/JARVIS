@@ -9,16 +9,16 @@ export class ToolExecutor {
   ) {}
 
   async execute<T = unknown>(request: ToolExecutionRequest): Promise<ToolExecutionResult<T>> {
+    const startedAt = new Date().toISOString();
     const started = Date.now();
+    const executionId = crypto.randomUUID();
     const tool = this.registry.get(request.toolId);
 
     if (!tool) {
-      const result: ToolExecutionResult<T> = {
-        toolId: request.toolId,
+      const result = this.result<T>(executionId, request.toolId, startedAt, started, {
         ok: false,
         error: `Unknown tool: ${request.toolId}`,
-        durationMs: Date.now() - started,
-      };
+      });
       await this.events?.emit("tool.failed", result, {
         requestId: request.context.requestId,
         taskId: request.context.taskId,
@@ -28,6 +28,7 @@ export class ToolExecutor {
 
     await this.events?.emit("tool.requested", {
       toolId: request.toolId,
+      executionId,
       authority: request.context.authority,
       approved: request.context.approved,
     }, {
@@ -38,31 +39,46 @@ export class ToolExecutor {
     try {
       this.validateArguments(tool.definition.argumentSchema, request.input);
       this.assertAuthorized(tool, request.context);
-      const value = await tool.execute(request.input, request.context) as T;
-      const result: ToolExecutionResult<T> = {
-        toolId: request.toolId,
+      const data = await tool.execute(request.input, request.context) as T;
+      const result = this.result<T>(executionId, request.toolId, startedAt, started, {
         ok: true,
-        value,
-        durationMs: Date.now() - started,
-      };
+        data,
+      });
       await this.events?.emit("tool.executed", result, {
         requestId: request.context.requestId,
         taskId: request.context.taskId,
       });
       return result;
     } catch (error) {
-      const result: ToolExecutionResult<T> = {
-        toolId: request.toolId,
+      const result = this.result<T>(executionId, request.toolId, startedAt, started, {
         ok: false,
         error: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - started,
-      };
+      });
       await this.events?.emit("tool.failed", result, {
         requestId: request.context.requestId,
         taskId: request.context.taskId,
       });
       return result;
     }
+  }
+
+  private result<T>(
+    executionId: string,
+    toolId: string,
+    startedAt: string,
+    started: number,
+    outcome: { ok: true; data: T } | { ok: false; error: string },
+  ): ToolExecutionResult<T> {
+    return {
+      executionId,
+      toolId,
+      ...outcome,
+      metadata: {
+        durationMs: Date.now() - started,
+        startedAt,
+        completedAt: new Date().toISOString(),
+      },
+    };
   }
 
   private validateArguments(schema: ToolArgumentSchema | undefined, input: ToolArguments): void {
