@@ -22,6 +22,7 @@ import { ProviderManager } from "../../providers/ProviderManager.js";
 import { createBuiltinTools } from "../../tools/builtin/index.js";
 import { ToolExecutor } from "../../tools/ToolExecutor.js";
 import { ToolRegistry } from "../../tools/ToolRegistry.js";
+import { PlanValidationEngine } from "./PlanValidationEngine.js";
 import { TaskContextStore, resolveToolArguments } from "./TaskContext.js";
 
 export interface RuntimeKernelOptions {
@@ -73,6 +74,7 @@ export class RuntimeKernel {
   readonly executionState: ExecutionStateMachine;
   readonly taskContext: TaskContextStore;
   readonly recovery: RecoveryEngine;
+  readonly planValidation: PlanValidationEngine;
 
   private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
@@ -92,6 +94,7 @@ export class RuntimeKernel {
     this.executionState = new ExecutionStateMachine();
     this.taskContext = new TaskContextStore();
     this.recovery = new RecoveryEngine();
+    this.planValidation = new PlanValidationEngine(this.tools);
     this.orchestrator = new Orchestrator({
       events: this.events,
       planner: this.planner,
@@ -101,6 +104,21 @@ export class RuntimeKernel {
 
   async execute(request: RuntimeExecutionRequest): Promise<RuntimeExecutionResult> {
     const orchestration = await this.orchestrator.execute(request);
+
+    const validation = this.planValidation.validate(orchestration.task);
+    if (!validation.valid) {
+      const reason = validation.issues.map((issue) => issue.stepId ? `${issue.stepId}: ${issue.reason}` : issue.reason).join("; ");
+      if (this.executionState.canTransition(orchestration.task.status, "failed")) {
+        this.executionState.transition(orchestration.task, "failed");
+      }
+      orchestration.task.error = `Plan validation failed: ${reason}`;
+      return {
+        requestId: orchestration.requestId,
+        task: orchestration.task,
+        status: "failed",
+        error: orchestration.task.error,
+      };
+    }
 
     if (orchestration.status === "awaiting_approval") {
       const approval = this.approvals.create(orchestration.task);
