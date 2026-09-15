@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { EventBus } from "../core/events/EventBus.js";
 import { Orchestrator } from "../core/orchestrator/Orchestrator.js";
+import { classifyIntent } from "../core/orchestrator/Intent.js";
 import { PolicyEngine } from "../core/policy/PolicyEngine.js";
 import { ToolExecutor } from "../tools/ToolExecutor.js";
 import { ToolRegistry } from "../tools/ToolRegistry.js";
@@ -82,5 +83,18 @@ test.describe("MARK_05 core", () => {
     expect(result.task.authority).toBe(3);
     expect(result.task.steps[0]?.toolId).toBe("filesystem.read_text");
     expect(result.task.steps[0]?.arguments).toEqual({ path: "notes.txt" });
+  });
+
+  test("classifies and plans YouTube playback as an executable action", async () => {
+    const intent = classifyIntent("open youtube and play Royalty song");
+    expect(intent.kind).toBe("media_playback");
+    expect(intent.requiresPlanning).toBe(true);
+
+    const result = await new Orchestrator().execute({ input: "open youtube and play Royalty song" });
+    expect(result.status).toBe("completed");
+    expect(result.intent.kind).toBe("media_playback");
+    expect(result.task.steps).toHaveLength(1);
+    expect(result.task.steps[0]?.toolId).toBe("media.youtube_play");
+    expect(result.task.steps[0]?.arguments).toEqual({ query: "Royalty song" });
   });
 });
