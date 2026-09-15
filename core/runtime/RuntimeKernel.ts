@@ -25,8 +25,9 @@ import { ToolRegistry } from "../../tools/ToolRegistry.js";
 import { PlanValidationEngine } from "./PlanValidationEngine.js";
 import { RuntimeReasoning, type RuntimeReasoningRequest } from "./RuntimeReasoning.js";
 import { promoteReasoningProposal, type ReasoningProposal } from "./TaskReasoningEngine.js";
-import { TaskContextStore, resolveToolArguments } from "./TaskContext.js";
+import { TaskContextStore } from "./TaskContext.js";
 import { ReasoningCycleEngine, type ReasoningCycleRequest, type ReasoningCycleResult } from "./ReasoningCycleEngine.js";
+import { ExecutionBoundary } from "./ExecutionBoundary.js";
 
 export interface RuntimeKernelOptions {
   providers?: ProviderManagerOptions;
@@ -82,6 +83,7 @@ export class RuntimeKernel {
   readonly planValidation: PlanValidationEngine;
   readonly reasoning: RuntimeReasoning;
   readonly reasoningCycle: ReasoningCycleEngine;
+  readonly executionBoundary: ExecutionBoundary;
 
   private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
@@ -101,7 +103,8 @@ export class RuntimeKernel {
     this.executionState = new ExecutionStateMachine();
     this.taskContext = new TaskContextStore();
     this.recovery = new RecoveryEngine();
-    this.planValidation = new PlanValidationEngine(this.tools);
+    this.planValidation = new PlanValidationEngine(this.tools, this.verification);
+    this.executionBoundary = new ExecutionBoundary(this.toolExecutor, this.verification, this.taskContext);
     this.reasoning = new RuntimeReasoning(this.failover);
     this.reasoningCycle = new ReasoningCycleEngine();
     this.orchestrator = new Orchestrator({ events: this.events, planner: this.planner, policy: this.policy });
@@ -150,10 +153,6 @@ export class RuntimeKernel {
     const decision = this.approvals.consumeApproved(id);
     if (!decision.allowed || !decision.request) throw new Error(decision.reason || "Approval is not valid.");
     return decision.request;
-  }
-
-  async executeTool(toolId: string, input: Record<string, unknown>, context: ToolContext) {
-    return this.toolExecutor.execute({ toolId, input, context });
   }
 
   async healthCheck(): Promise<void> {
@@ -258,7 +257,13 @@ export class RuntimeKernel {
   }
 
   private async executeToolStep(request: RuntimeExecutionRequest, task: Task, requestId: string, step: TaskStep): Promise<RuntimeExecutionResult | undefined> {
-    if (!step.toolId || step.status === "completed") return undefined;
+    if (!step.toolId) return undefined;
+    if (this.executionBoundary.isVerifiedCompletion(step)) return undefined;
+    if (step.status === "completed") {
+      this.executionState.transition(step, "failed");
+      step.error = `Completed step has no authoritative verification: ${step.id}`;
+      return this.failTask(task, step.error);
+    }
     if (!step.arguments) {
       step.status = "failed";
       step.error = "Planned tool has no structured arguments.";
@@ -273,44 +278,24 @@ export class RuntimeKernel {
     if (step.status !== "running") this.executionState.transition(step, "running");
     if (task.status !== "running") this.executionState.transition(task, "running");
 
-    let toolInput: Record<string, unknown>;
-    try {
-      toolInput = resolveToolArguments(task, step.arguments, this.taskContext);
-    } catch (error) {
-      this.executionState.transition(step, "failed");
-      step.error = error instanceof Error ? error.message : String(error);
-      return this.failTask(task, `Argument reference resolution failed: ${step.error}`);
-    }
-
-    const context: ToolContext = { requestId, taskId: task.id, authority: task.authority, approved: Boolean(request.policyContext?.explicitApproval), metadata: { goal: task.goal, stepId: step.id } };
-    const toolResult = await this.executeTool(step.toolId, toolInput, context);
     const attempt = this.nextAttempt(task, step.id);
-
-    if (!toolResult.ok) {
-      this.recordExecution(task, { stepId: step.id, toolId: step.toolId, attempt, outcome: "tool_failure", executionId: toolResult.executionId, startedAt: toolResult.metadata.startedAt, completedAt: toolResult.metadata.completedAt, error: toolResult.error || "Tool execution failed." });
-      if (this.retryStep(task, step, toolResult.error || "Tool execution failed.")) return this.executeToolStep(request, task, requestId, step);
-      this.executionState.transition(step, "failed");
-      step.error = toolResult.error || "Tool execution failed.";
-      return this.failTask(task, step.error);
+    try {
+      this.executionState.transition(step, "verifying");
+      this.executionState.transition(task, "verifying");
+      const result = await this.executionBoundary.executeStep(task, requestId, step, Boolean(request.policyContext?.explicitApproval));
+      this.recordExecution(task, { stepId: step.id, toolId: step.toolId, attempt, outcome: "success", executionId: result.toolResult.executionId, startedAt: result.toolResult.metadata.startedAt, completedAt: result.toolResult.metadata.completedAt });
+      this.executionState.transition(step, "completed");
+      this.taskContext.publish(task, step.id, { executionId: result.toolResult.executionId, data: result.toolResult.data, metadata: result.toolResult.metadata });
+      return undefined;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const failedExecution = message.startsWith("Verification failed:") ? "verification_failure" : "tool_failure";
+      this.recordExecution(task, { stepId: step.id, toolId: step.toolId, attempt, outcome: failedExecution, executionId: crypto.randomUUID(), startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), error: message });
+      if (this.retryStep(task, step, message)) return this.executeToolStep(request, task, requestId, step);
+      step.status = "failed";
+      step.error = message;
+      return this.failTask(task, message);
     }
-
-    this.executionState.transition(step, "verifying");
-    this.executionState.transition(task, "verifying");
-    const verification = await this.verification.verify({ requestId, taskId: task.id, toolId: step.toolId, input: toolInput, result: toolResult, step });
-    step.verification = verification;
-    if (!verification.verified) {
-      this.recordExecution(task, { stepId: step.id, toolId: step.toolId, attempt, outcome: "verification_failure", executionId: toolResult.executionId, startedAt: toolResult.metadata.startedAt, completedAt: toolResult.metadata.completedAt, error: `Verification failed: ${verification.reason}` });
-      if (this.retryStep(task, step, `Verification failed: ${verification.reason}`)) return this.executeToolStep(request, task, requestId, step);
-      this.executionState.transition(step, "failed");
-      step.error = verification.reason;
-      return this.failTask(task, `Verification failed: ${verification.reason}`);
-    }
-
-    this.recordExecution(task, { stepId: step.id, toolId: step.toolId, attempt, outcome: "success", executionId: toolResult.executionId, startedAt: toolResult.metadata.startedAt, completedAt: toolResult.metadata.completedAt });
-    this.executionState.transition(step, "completed");
-    step.result = toolResult.data;
-    this.taskContext.publish(task, step.id, { executionId: toolResult.executionId, data: toolResult.data, metadata: toolResult.metadata });
-    return undefined;
   }
 
   private async executeTask(request: RuntimeExecutionRequest, task: Task, requestId: string): Promise<RuntimeExecutionResult> {
@@ -319,9 +304,12 @@ export class RuntimeKernel {
       let lastToolResult: unknown;
       let lastVerification: VerificationResult | undefined;
       for (const step of task.steps) {
-        if (step.status === "completed") {
+        if (this.executionBoundary.isVerifiedCompletion(step)) {
           if (step.toolId) { lastToolResult = step.result; lastVerification = step.verification as VerificationResult | undefined; }
           continue;
+        }
+        if (step.status === "completed") {
+          return this.failTask(task, `Completed step has no authoritative verification: ${step.id}`);
         }
         if (task.status === "verifying") this.executionState.transition(task, "running");
         if (task.status === "replanning") this.executionState.transition(task, "running");
