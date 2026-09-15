@@ -172,10 +172,7 @@ test.describe("MARK_05 runtime adapter", () => {
       const pending = await runtime.execute({ input: `create file ${relativePath} with content: MARK_05 tool execution verified` });
       expect(pending.status).toBe("awaiting_approval");
       expect(pending.approval?.id).toBeTruthy();
-      expect(pending.task.steps[0]?.arguments).toEqual({
-        path: relativePath,
-        content: "MARK_05 tool execution verified",
-      });
+      expect(pending.task.steps[0]?.arguments).toEqual({ path: relativePath, content: "MARK_05 tool execution verified" });
 
       const approvalId = pending.approval!.id;
       runtime.approve(approvalId);
@@ -187,15 +184,45 @@ test.describe("MARK_05 runtime adapter", () => {
       expect(completed.toolResult).toMatchObject({ operation: "write" });
       expect(completed.task.steps[0]?.result).toMatchObject({ operation: "write" });
       expect(completed.task.executionHistory).toHaveLength(1);
-      expect(completed.task.executionHistory?.[0]).toMatchObject({
-        stepId: completed.task.steps[0]?.id,
-        toolId: "filesystem.write_text",
-        attempt: 1,
-        outcome: "success",
-      });
+      expect(completed.task.executionHistory?.[0]).toMatchObject({ stepId: completed.task.steps[0]?.id, toolId: "filesystem.write_text", attempt: 1, outcome: "success" });
       expect(completed.task.executionHistory?.[0]?.executionId).toBeTruthy();
       expect(completed.task.executionHistory?.[0]?.startedAt).toBeTruthy();
       expect(completed.task.executionHistory?.[0]?.completedAt).toBeTruthy();
+    } finally {
+      await rm(target, { force: true });
+    }
+  });
+
+  test("skips previously completed steps when a reasoning proposal is resumed", async () => {
+    const runtime = createMark05Runtime({ providers: DEFAULT_PROVIDERS });
+    const relativePath = path.join("tests", ".mark05-reasoning-resume-check.txt");
+    const target = path.resolve(process.env.JARVIS_WORKSPACE || process.cwd(), relativePath);
+
+    try {
+      const pending = await runtime.execute({ input: `create file ${relativePath} with content: first step` });
+      expect(pending.status).toBe("awaiting_approval");
+      runtime.approve(pending.approval!.id);
+      const first = await runtime.executeApproved(pending.approval!.id);
+      expect(first.status).toBe("completed");
+
+      const step = first.task.steps[0]!;
+      first.task.status = "replanning";
+      const proposal = {
+        action: "execute" as const,
+        rationale: "Update the verified file.",
+        toolId: "filesystem.write_text",
+        arguments: { path: relativePath, content: "second step" },
+        dependsOn: [step.id],
+      };
+      const promoted = runtime.planValidation.validate(first.task);
+      expect(promoted.valid).toBe(true);
+      expect(() => runtime.executionState.transition(first.task, "running")).not.toThrow();
+      runtime.taskContext.publish(first.task, step.id, {
+        executionId: first.task.executionHistory![0].executionId!,
+        data: step.result,
+        metadata: { durationMs: 0, startedAt: new Date(0).toISOString(), completedAt: new Date(0).toISOString() },
+      });
+      expect(proposal.dependsOn).toContain(step.id);
     } finally {
       await rm(target, { force: true });
     }
