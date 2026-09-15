@@ -10,15 +10,15 @@ export interface ReasoningCycleRequest {
 }
 
 export interface ReasoningCycleResult {
-  status: "stopped" | "proposed" | "bounded";
+  status: "stopped" | "awaiting_approval" | "bounded";
   cycles: number;
-  proposal?: ReasoningProposal;
+  proposal: ReasoningProposal;
   step?: TaskStep;
 }
 
 export type ReasoningCycleRunner = () => Promise<{ proposal: ReasoningProposal; step?: TaskStep }>;
 
-/** Bounds iterative reasoning so model output can never create an unbounded execution loop. */
+/** Bounds iterative reasoning. Each promoted action is a fresh pending step and must be separately authorized. */
 export class ReasoningCycleEngine {
   constructor(private readonly defaultMaxCycles = 3) {}
 
@@ -28,22 +28,20 @@ export class ReasoningCycleEngine {
       throw new Error("Reasoning cycle maxCycles must be an integer from 1 to 10.");
     }
 
-    for (let cycle = 1; cycle <= maxCycles; cycle += 1) {
-      const result = await runner();
-      if (result.proposal.action === "stop") {
-        return { status: "stopped", cycles: cycle, proposal: result.proposal };
-      }
-
-      if (result.step) {
-        result.step.status = "pending";
-        task.updatedAt = new Date().toISOString();
-      }
-
-      if (cycle === maxCycles) {
-        return { status: "bounded", cycles: cycle, proposal: result.proposal, step: result.step };
-      }
+    const result = await runner();
+    if (result.proposal.action === "stop") {
+      return { status: "stopped", cycles: 1, proposal: result.proposal };
     }
 
-    throw new Error("Reasoning cycle terminated unexpectedly.");
+    if (!result.step) throw new Error("Reasoning execution proposal did not produce a task step.");
+
+    result.step.status = "pending";
+    task.updatedAt = new Date().toISOString();
+    return {
+      status: maxCycles === 1 ? "bounded" : "awaiting_approval",
+      cycles: 1,
+      proposal: result.proposal,
+      step: result.step,
+    };
   }
 }
