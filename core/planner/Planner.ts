@@ -31,7 +31,7 @@ function mergeRisk(current: RiskLevel, next: RiskLevel): RiskLevel {
 export class Planner {
   createPlan(input: string, intent: Intent, requestId: string): Task {
     const now = new Date().toISOString();
-    const segments = this.splitCompoundRequest(input);
+    const segments = intent.kind === "media_playback" ? [input.trim()] : this.splitCompoundRequest(input);
     const steps: TaskStep[] = [];
     let authority = intent.authority;
     let risk = intent.risk;
@@ -69,7 +69,7 @@ export class Planner {
   private splitCompoundRequest(input: string): string[] {
     return input
       .trim()
-      .split(/\s+(?:then|and)\s+(?=(?:open|launch|start|play|listen|create|read|view|show|write|edit|modify|delete)\b)/i)
+      .split(/\s+(?:then|and)\s+(?=(?:open|launch|start|create|read|view|show|write|edit|modify|delete)\b)/i)
       .map((segment) => segment.trim())
       .filter(Boolean);
   }
