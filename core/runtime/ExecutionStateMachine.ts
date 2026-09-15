@@ -8,7 +8,7 @@ const ALLOWED_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   awaiting_approval: ["running", "failed", "cancelled"],
   running: ["verifying", "completed", "replanning", "failed", "cancelled"],
   verifying: ["running", "completed", "replanning", "failed", "cancelled"],
-  replanning: ["running", "failed", "cancelled"],
+  replanning: ["running", "awaiting_approval", "failed", "cancelled"],
   completed: [],
   failed: [],
   cancelled: [],
