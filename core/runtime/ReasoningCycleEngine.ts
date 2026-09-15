@@ -20,6 +20,8 @@ export type ReasoningCycleRunner = () => Promise<{ proposal: ReasoningProposal; 
 
 /** Bounds iterative reasoning. Each promoted action is a fresh pending step and must be separately authorized. */
 export class ReasoningCycleEngine {
+  private readonly cyclesByTask = new WeakMap<Task, number>();
+
   constructor(private readonly defaultMaxCycles = 3) {}
 
   async run(task: Task, runner: ReasoningCycleRunner, request: ReasoningCycleRequest = {}): Promise<ReasoningCycleResult> {
@@ -28,9 +30,21 @@ export class ReasoningCycleEngine {
       throw new Error("Reasoning cycle maxCycles must be an integer from 1 to 10.");
     }
 
+    const completedCycles = this.cyclesByTask.get(task) ?? 0;
+    if (completedCycles >= maxCycles) {
+      return {
+        status: "stopped",
+        cycles: completedCycles,
+        proposal: { action: "stop", rationale: "Reasoning cycle budget exhausted for this task." },
+      };
+    }
+
     const result = await runner();
+    const cycles = completedCycles + 1;
+    this.cyclesByTask.set(task, cycles);
+
     if (result.proposal.action === "stop") {
-      return { status: "stopped", cycles: 1, proposal: result.proposal };
+      return { status: "stopped", cycles, proposal: result.proposal };
     }
 
     if (!result.step) throw new Error("Reasoning execution proposal did not produce a task step.");
@@ -38,8 +52,8 @@ export class ReasoningCycleEngine {
     result.step.status = "pending";
     task.updatedAt = new Date().toISOString();
     return {
-      status: maxCycles === 1 ? "bounded" : "awaiting_approval",
-      cycles: 1,
+      status: cycles >= maxCycles ? "bounded" : "awaiting_approval",
+      cycles,
       proposal: result.proposal,
       step: result.step,
     };
