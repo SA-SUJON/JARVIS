@@ -69,13 +69,18 @@ export class Planner {
   private splitCompoundRequest(input: string): string[] {
     return input
       .trim()
-      .split(/\s+then\s+(?=(?:open|launch|start|create|read|view|show|write|edit|modify|delete)\b)/i)
+      .split(/\s+(?:then|and)\s+(?=(?:open|launch|start|play|listen|create|read|view|show|write|edit|modify|delete)\b)/i)
       .map((segment) => segment.trim())
       .filter(Boolean);
   }
 
   private toolCallFor(intent: Intent, input: string): ToolCall | undefined {
     switch (intent.kind) {
+      case "media_playback": {
+        const match = input.match(/\bplay\s+(.+?)(?:\s+on\s+(?:youtube|music|video|track|media))?\s*$/i);
+        const query = match ? stripQuotes(match[1]) : "";
+        return query ? { toolId: "media.youtube_play", arguments: { query } } : undefined;
+      }
       case "application_control": {
         const match = input.match(/^\s*(?:open|launch|start)\s+(?:the\s+)?(?:app(?:lication)?|program)?\s*["']?(.+?)["']?\s*$/i);
         const app = match ? stripQuotes(match[1]) : "";
@@ -109,6 +114,8 @@ export class Planner {
     switch (intent.kind) {
       case "search":
         return `Research and answer: ${input}`;
+      case "media_playback":
+        return `Find and play the requested media: ${input}`;
       case "application_control":
         return `Control the requested application: ${input}`;
       case "file_operation":
