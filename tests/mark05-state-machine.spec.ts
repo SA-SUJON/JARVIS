@@ -45,6 +45,15 @@ test.describe("MARK_05 execution state machine", () => {
     expect(() => machine.transition(current, "running")).toThrow("Invalid execution state transition");
   });
 
+  test("allows replanning to request a fresh approval", () => {
+    const machine = new ExecutionStateMachine();
+    const current = task("replanning");
+
+    expect(machine.canTransition("replanning", "awaiting_approval")).toBe(true);
+    machine.transition(current, "awaiting_approval");
+    expect(current.status).toBe("awaiting_approval");
+  });
+
   test("governs step lifecycle independently", () => {
     const machine = new ExecutionStateMachine();
     const current = step("pending");
