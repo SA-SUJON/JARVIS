@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { parseReasoningProposal, TaskReasoningEngine } from "../core/runtime/TaskReasoningEngine.js";
+import { parseReasoningProposal, promoteReasoningProposal, TaskReasoningEngine } from "../core/runtime/TaskReasoningEngine.js";
 import type { ProviderResponse, Task } from "../core/contracts/types.js";
 
 function response(content: string): ProviderResponse {
@@ -68,6 +68,40 @@ test.describe("MARK_05 bounded task reasoning", () => {
       arguments: { path: "tests/out.txt", content: { $ref: "step:step-read.data.content" } },
       dependsOn: ["step-read"],
     });
+  });
+
+  test("promotes an execute proposal into a pending task step", () => {
+    const current = task();
+    const step = promoteReasoningProposal(current, {
+      action: "execute",
+      rationale: "Write the observed content to the output file.",
+      toolId: "filesystem.write_text",
+      arguments: {
+        path: "tests/out.txt",
+        content: { $ref: "step:step-read.data.content" },
+      },
+      dependsOn: ["step-read", "step-read"],
+    });
+
+    expect(step.id).toBeTruthy();
+    expect(step.status).toBe("pending");
+    expect(step.toolId).toBe("filesystem.write_text");
+    expect(step.arguments).toEqual({
+      path: "tests/out.txt",
+      content: { $ref: "step:step-read.data.content" },
+    });
+    expect(step.dependsOn).toEqual(["step-read"]);
+    expect(current.steps).toHaveLength(2);
+  });
+
+  test("rejects promotion when a dependency is not part of the task", () => {
+    expect(() => promoteReasoningProposal(task(), {
+      action: "execute",
+      rationale: "Attempt an unrelated action.",
+      toolId: "filesystem.write_text",
+      arguments: { path: "tests/out.txt", content: "x" },
+      dependsOn: ["missing-step"],
+    })).toThrow("unknown dependency");
   });
 
   test("accepts a stop proposal without an action payload", () => {
