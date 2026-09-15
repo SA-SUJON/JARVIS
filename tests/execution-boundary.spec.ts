@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { ExecutionBoundary } from "../core/runtime/ExecutionBoundary.js";
+import { RuntimeKernel } from "../core/runtime/RuntimeKernel.js";
 import { TaskContextStore } from "../core/runtime/TaskContext.js";
 import { VerificationEngine } from "../core/verification/VerificationEngine.js";
 import { ToolExecutor } from "../tools/ToolExecutor.js";
@@ -71,9 +72,10 @@ test.describe("MARK_05 execution boundary", () => {
       new VerificationEngine(undefined, [{
         supports: (toolId) => toolId === "test.boundary",
         async verify(request) {
+          const valid = request.result.ok && request.result.data?.operation === "boundary-test";
           return {
-            status: request.result.ok && request.result.data?.operation === "boundary-test" ? "verified" : "failed",
-            verified: request.result.ok && request.result.data?.operation === "boundary-test",
+            status: valid ? "verified" : "failed",
+            verified: valid,
             reason: "Deterministic boundary verification",
           };
         },
@@ -88,5 +90,13 @@ test.describe("MARK_05 execution boundary", () => {
     expect(result.verification.verified).toBe(true);
     expect(task.steps[0]?.result).toEqual({ value: "ok", operation: "boundary-test" });
     expect(task.steps[0]?.verification?.verified).toBe(true);
+  });
+
+  test("kernel uses the execution boundary and shares verifier coverage with preflight", () => {
+    const runtime = new RuntimeKernel();
+    expect(runtime.executionBoundary).toBeInstanceOf(ExecutionBoundary);
+    expect(runtime.planValidation).toBeTruthy();
+    expect(runtime.verification.supports("media.youtube_play")).toBe(true);
+    expect(runtime.verification.supports("system.open_app")).toBe(true);
   });
 });
