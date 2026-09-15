@@ -14,6 +14,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: STT regression checks
+        run: python tests/stt_runtime_test.py
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
