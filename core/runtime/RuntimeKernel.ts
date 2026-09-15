@@ -23,6 +23,8 @@ import { createBuiltinTools } from "../../tools/builtin/index.js";
 import { ToolExecutor } from "../../tools/ToolExecutor.js";
 import { ToolRegistry } from "../../tools/ToolRegistry.js";
 import { PlanValidationEngine } from "./PlanValidationEngine.js";
+import { RuntimeReasoning, type RuntimeReasoningRequest } from "./RuntimeReasoning.js";
+import { promoteReasoningProposal, type ReasoningProposal } from "./TaskReasoningEngine.js";
 import { TaskContextStore, resolveToolArguments } from "./TaskContext.js";
 
 export interface RuntimeKernelOptions {
@@ -75,6 +77,7 @@ export class RuntimeKernel {
   readonly taskContext: TaskContextStore;
   readonly recovery: RecoveryEngine;
   readonly planValidation: PlanValidationEngine;
+  readonly reasoning: RuntimeReasoning;
 
   private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
@@ -95,6 +98,7 @@ export class RuntimeKernel {
     this.taskContext = new TaskContextStore();
     this.recovery = new RecoveryEngine();
     this.planValidation = new PlanValidationEngine(this.tools);
+    this.reasoning = new RuntimeReasoning(this.failover);
     this.orchestrator = new Orchestrator({
       events: this.events,
       planner: this.planner,
@@ -208,6 +212,20 @@ export class RuntimeKernel {
 
   async healthCheck(): Promise<void> {
     await this.providers.healthCheckAll();
+  }
+
+  async reasonNextAction(task: Task, request: RuntimeReasoningRequest): Promise<{ proposal: ReasoningProposal; step?: TaskStep }> {
+    const proposal = await this.reasoning.proposeNextAction(task, request);
+    if (proposal.action === "stop") return { proposal };
+
+    const step = promoteReasoningProposal(task, proposal);
+    const validation = this.planValidation.validate(task);
+    if (!validation.valid) {
+      task.steps.pop();
+      const reason = validation.issues.map((issue) => issue.stepId ? `${issue.stepId}: ${issue.reason}` : issue.reason).join("; ");
+      throw new Error(`Reasoning proposal failed plan validation: ${reason}`);
+    }
+    return { proposal, step };
   }
 
   private recordExecution(task: Task, receipt: Omit<TaskExecutionReceipt, "id">): void {
