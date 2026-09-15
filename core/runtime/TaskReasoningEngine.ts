@@ -71,6 +71,33 @@ export class TaskReasoningEngine {
   }
 }
 
+export function promoteReasoningProposal(task: Task, proposal: ReasoningProposal): TaskStep {
+  if (proposal.action !== "execute" || !proposal.toolId || !proposal.arguments) {
+    throw new Error("Only execute reasoning proposals can be promoted to task steps.");
+  }
+
+  const dependencies = proposal.dependsOn ? [...new Set(proposal.dependsOn)] : [];
+  const existingStepIds = new Set(task.steps.map((step) => step.id));
+  for (const dependencyId of dependencies) {
+    if (!existingStepIds.has(dependencyId)) {
+      throw new Error(`Reasoning proposal references unknown dependency: ${dependencyId}`);
+    }
+  }
+
+  const step: TaskStep = {
+    id: crypto.randomUUID(),
+    description: proposal.rationale,
+    toolId: proposal.toolId,
+    arguments: proposal.arguments,
+    dependsOn: dependencies.length ? dependencies : undefined,
+    status: "pending",
+  };
+
+  task.steps.push(step);
+  task.updatedAt = new Date().toISOString();
+  return step;
+}
+
 export function parseReasoningProposal(content: string, maxChars = 8000): ReasoningProposal {
   const bounded = content.trim();
   if (!bounded) throw new Error("Reasoning provider returned an empty proposal.");
