@@ -26,6 +26,7 @@ import { PlanValidationEngine } from "./PlanValidationEngine.js";
 import { RuntimeReasoning, type RuntimeReasoningRequest } from "./RuntimeReasoning.js";
 import { promoteReasoningProposal, type ReasoningProposal } from "./TaskReasoningEngine.js";
 import { TaskContextStore, resolveToolArguments } from "./TaskContext.js";
+import { ReasoningCycleEngine, type ReasoningCycleRequest, type ReasoningCycleResult } from "./ReasoningCycleEngine.js";
 
 export interface RuntimeKernelOptions {
   providers?: ProviderManagerOptions;
@@ -78,6 +79,7 @@ export class RuntimeKernel {
   readonly recovery: RecoveryEngine;
   readonly planValidation: PlanValidationEngine;
   readonly reasoning: RuntimeReasoning;
+  readonly reasoningCycle: ReasoningCycleEngine;
 
   private readonly pendingExecutions = new Map<string, PendingApprovalExecution>();
 
@@ -99,6 +101,7 @@ export class RuntimeKernel {
     this.recovery = new RecoveryEngine();
     this.planValidation = new PlanValidationEngine(this.tools);
     this.reasoning = new RuntimeReasoning(this.failover);
+    this.reasoningCycle = new ReasoningCycleEngine();
     this.orchestrator = new Orchestrator({
       events: this.events,
       planner: this.planner,
@@ -116,40 +119,20 @@ export class RuntimeKernel {
         this.executionState.transition(orchestration.task, "failed");
       }
       orchestration.task.error = `Plan validation failed: ${reason}`;
-      return {
-        requestId: orchestration.requestId,
-        task: orchestration.task,
-        status: "failed",
-        error: orchestration.task.error,
-      };
+      return { requestId: orchestration.requestId, task: orchestration.task, status: "failed", error: orchestration.task.error };
     }
 
     if (orchestration.status === "awaiting_approval") {
       const approval = this.approvals.create(orchestration.task);
       this.pendingExecutions.set(approval.id, {
-        request: {
-          ...request,
-          history: request.history?.map((message) => ({ ...message })),
-          policyContext: request.policyContext ? { ...request.policyContext } : undefined,
-        },
+        request: { ...request, history: request.history?.map((message) => ({ ...message })), policyContext: request.policyContext ? { ...request.policyContext } : undefined },
         task: orchestration.task,
       });
-      return {
-        requestId: orchestration.requestId,
-        task: orchestration.task,
-        status: "awaiting_approval",
-        approval,
-        error: orchestration.error,
-      };
+      return { requestId: orchestration.requestId, task: orchestration.task, status: "awaiting_approval", approval, error: orchestration.error };
     }
 
     if (orchestration.status !== "completed") {
-      return {
-        requestId: orchestration.requestId,
-        task: orchestration.task,
-        status: orchestration.status,
-        error: orchestration.error,
-      };
+      return { requestId: orchestration.requestId, task: orchestration.task, status: orchestration.status, error: orchestration.error };
     }
 
     return this.executeTask(request, orchestration.task, orchestration.requestId);
@@ -158,32 +141,21 @@ export class RuntimeKernel {
   async executeApproved(id: string): Promise<RuntimeExecutionResult> {
     const approval = this.consumeApproval(id);
     const pending = this.pendingExecutions.get(id);
-    if (!pending) {
-      throw new Error("Approved execution payload is no longer available. The action must be requested again.");
-    }
-
+    if (!pending) throw new Error("Approved execution payload is no longer available. The action must be requested again.");
     if (pending.task.id !== approval.taskId || pending.task.requestId !== approval.requestId) {
       this.pendingExecutions.delete(id);
       throw new Error("Approval does not match the pending task and has been invalidated.");
     }
-
     this.pendingExecutions.delete(id);
-    const authorizedRequest: RuntimeExecutionRequest = {
+    return this.executeTask({
       ...pending.request,
-      policyContext: {
-        ...(pending.request.policyContext || {}),
-        explicitApproval: true,
-      },
-    };
-
-    return this.executeTask(authorizedRequest, pending.task, approval.requestId);
+      policyContext: { ...(pending.request.policyContext || {}), explicitApproval: true },
+    }, pending.task, approval.requestId);
   }
 
   listApprovals(): ApprovalRequest[] {
     const active = new Set(this.approvals.list().map((approval) => approval.id));
-    for (const id of this.pendingExecutions.keys()) {
-      if (!active.has(id)) this.pendingExecutions.delete(id);
-    }
+    for (const id of this.pendingExecutions.keys()) if (!active.has(id)) this.pendingExecutions.delete(id);
     return this.approvals.list();
   }
 
@@ -217,7 +189,6 @@ export class RuntimeKernel {
   async reasonNextAction(task: Task, request: RuntimeReasoningRequest): Promise<{ proposal: ReasoningProposal; step?: TaskStep }> {
     const proposal = await this.reasoning.proposeNextAction(task, request);
     if (proposal.action === "stop") return { proposal };
-
     const step = promoteReasoningProposal(task, proposal);
     const validation = this.planValidation.validate(task);
     if (!validation.valid) {
@@ -226,6 +197,15 @@ export class RuntimeKernel {
       throw new Error(`Reasoning proposal failed plan validation: ${reason}`);
     }
     return { proposal, step };
+  }
+
+  async runReasoningCycle(task: Task, request: ReasoningCycleRequest = {}): Promise<ReasoningCycleResult> {
+    return this.reasoningCycle.run(task, async () => this.reasonNextAction(task, {
+      requestId: task.requestId,
+      preferredProvider: request.preferredProvider,
+      preferredModel: request.preferredModel,
+      maxTokens: request.maxTokens,
+    }));
   }
 
   private recordExecution(task: Task, receipt: Omit<TaskExecutionReceipt, "id">): void {
@@ -247,7 +227,6 @@ export class RuntimeKernel {
   private retryStep(task: Task, step: TaskStep, reason: string): boolean {
     const decision = this.recovery.decide(task, step, reason);
     if (decision.action !== "retry_step") return false;
-
     this.executionState.transition(step, "replanning");
     if (task.status !== "replanning") this.executionState.transition(task, "replanning");
     this.executionState.transition(task, "running");
@@ -257,23 +236,15 @@ export class RuntimeKernel {
     return true;
   }
 
-  private async executeToolStep(
-    request: RuntimeExecutionRequest,
-    task: Task,
-    requestId: string,
-    step: TaskStep,
-  ): Promise<RuntimeExecutionResult | undefined> {
+  private async executeToolStep(request: RuntimeExecutionRequest, task: Task, requestId: string, step: TaskStep): Promise<RuntimeExecutionResult | undefined> {
     if (!step.toolId) return undefined;
-
     if (!step.arguments) {
       step.status = "failed";
       step.error = "Planned tool has no structured arguments.";
       return this.failTask(task, step.error);
     }
 
-    const unmetDependencies = (step.dependsOn || []).filter((dependencyId) =>
-      task.steps.find((candidate) => candidate.id === dependencyId)?.status !== "completed",
-    );
+    const unmetDependencies = (step.dependsOn || []).filter((dependencyId) => task.steps.find((candidate) => candidate.id === dependencyId)?.status !== "completed");
     if (unmetDependencies.length) {
       step.status = "failed";
       step.error = `Step dependencies are not complete: ${unmetDependencies.join(", ")}`;
@@ -292,31 +263,13 @@ export class RuntimeKernel {
       return this.failTask(task, `Argument reference resolution failed: ${step.error}`);
     }
 
-    const context: ToolContext = {
-      requestId,
-      taskId: task.id,
-      authority: task.authority,
-      approved: Boolean(request.policyContext?.explicitApproval),
-      metadata: { goal: task.goal, stepId: step.id },
-    };
+    const context: ToolContext = { requestId, taskId: task.id, authority: task.authority, approved: Boolean(request.policyContext?.explicitApproval), metadata: { goal: task.goal, stepId: step.id } };
     const toolResult = await this.executeTool(step.toolId, toolInput, context);
     const attempt = this.nextAttempt(task, step.id);
 
     if (!toolResult.ok) {
-      this.recordExecution(task, {
-        stepId: step.id,
-        toolId: step.toolId,
-        attempt,
-        outcome: "tool_failure",
-        executionId: toolResult.executionId,
-        startedAt: toolResult.metadata.startedAt,
-        completedAt: toolResult.metadata.completedAt,
-        error: toolResult.error || "Tool execution failed.",
-      });
-
-      if (this.retryStep(task, step, toolResult.error || "Tool execution failed.")) {
-        return this.executeToolStep(request, task, requestId, step);
-      }
+      this.recordExecution(task, { stepId: step.id, toolId: step.toolId, attempt, outcome: "tool_failure", executionId: toolResult.executionId, startedAt: toolResult.metadata.startedAt, completedAt: toolResult.metadata.completedAt, error: toolResult.error || "Tool execution failed." });
+      if (this.retryStep(task, step, toolResult.error || "Tool execution failed.")) return this.executeToolStep(request, task, requestId, step);
       this.executionState.transition(step, "failed");
       step.error = toolResult.error || "Tool execution failed.";
       return this.failTask(task, step.error);
@@ -324,54 +277,21 @@ export class RuntimeKernel {
 
     this.executionState.transition(step, "verifying");
     this.executionState.transition(task, "verifying");
-
-    const verification = await this.verification.verify({
-      requestId,
-      taskId: task.id,
-      toolId: step.toolId,
-      input: toolInput,
-      result: toolResult,
-      step,
-    });
+    const verification = await this.verification.verify({ requestId, taskId: task.id, toolId: step.toolId, input: toolInput, result: toolResult, step });
     step.verification = verification;
 
     if (!verification.verified) {
-      this.recordExecution(task, {
-        stepId: step.id,
-        toolId: step.toolId,
-        attempt,
-        outcome: "verification_failure",
-        executionId: toolResult.executionId,
-        startedAt: toolResult.metadata.startedAt,
-        completedAt: toolResult.metadata.completedAt,
-        error: `Verification failed: ${verification.reason}`,
-      });
-
-      if (this.retryStep(task, step, `Verification failed: ${verification.reason}`)) {
-        return this.executeToolStep(request, task, requestId, step);
-      }
+      this.recordExecution(task, { stepId: step.id, toolId: step.toolId, attempt, outcome: "verification_failure", executionId: toolResult.executionId, startedAt: toolResult.metadata.startedAt, completedAt: toolResult.metadata.completedAt, error: `Verification failed: ${verification.reason}` });
+      if (this.retryStep(task, step, `Verification failed: ${verification.reason}`)) return this.executeToolStep(request, task, requestId, step);
       this.executionState.transition(step, "failed");
       step.error = verification.reason;
       return this.failTask(task, `Verification failed: ${verification.reason}`);
     }
 
-    this.recordExecution(task, {
-      stepId: step.id,
-      toolId: step.toolId,
-      attempt,
-      outcome: "success",
-      executionId: toolResult.executionId,
-      startedAt: toolResult.metadata.startedAt,
-      completedAt: toolResult.metadata.completedAt,
-    });
-
+    this.recordExecution(task, { stepId: step.id, toolId: step.toolId, attempt, outcome: "success", executionId: toolResult.executionId, startedAt: toolResult.metadata.startedAt, completedAt: toolResult.metadata.completedAt });
     this.executionState.transition(step, "completed");
     step.result = toolResult.data;
-    this.taskContext.publish(task, step.id, {
-      executionId: toolResult.executionId,
-      data: toolResult.data,
-      metadata: toolResult.metadata,
-    });
+    this.taskContext.publish(task, step.id, { executionId: toolResult.executionId, data: toolResult.data, metadata: toolResult.metadata });
     return undefined;
   }
 
@@ -381,64 +301,27 @@ export class RuntimeKernel {
     if (task.steps.some((step) => step.toolId)) {
       let lastToolResult: unknown;
       let lastVerification: VerificationResult | undefined;
-
       for (const step of task.steps) {
         if (task.status === "verifying") this.executionState.transition(task, "running");
         if (task.status === "replanning") this.executionState.transition(task, "running");
         const result = await this.executeToolStep(request, task, requestId, step);
         if (result) return { ...result, requestId };
-        if (step.toolId) {
-          lastToolResult = step.result;
-          lastVerification = step.verification as VerificationResult | undefined;
-        }
+        if (step.toolId) { lastToolResult = step.result; lastVerification = step.verification as VerificationResult | undefined; }
       }
-
       this.executionState.transition(task, "completed");
       task.result = lastToolResult;
-      return {
-        requestId,
-        task,
-        status: "completed",
-        toolResult: lastToolResult,
-        verification: lastVerification,
-      };
+      return { requestId, task, status: "completed", toolResult: lastToolResult, verification: lastVerification };
     }
 
-    if (task.authority >= 3) {
-      return this.failTask(task, "Approval granted, but no state-changing execution tool is bound to this task yet.");
-    }
+    if (task.authority >= 3) return this.failTask(task, "Approval granted, but no state-changing execution tool is bound to this task yet.");
 
-    const routeRequest: Omit<ModelRouteRequest, "prompt"> = {
-      preferredProvider: request.preferredProvider,
-      preferredModel: request.preferredModel,
-      taskType: request.taskType ?? "conversation",
-    };
-
+    const routeRequest: Omit<ModelRouteRequest, "prompt"> = { preferredProvider: request.preferredProvider, preferredModel: request.preferredModel, taskType: request.taskType ?? "conversation" };
     try {
-      const result = await this.failover.execute(
-        {
-          requestId,
-          prompt: request.input,
-          systemPrompt: request.systemPrompt,
-          history: request.history as ChatMessage[] | undefined,
-          temperature: request.temperature,
-          maxTokens: request.maxTokens,
-        },
-        routeRequest,
-      );
-
+      const result = await this.failover.execute({ requestId, prompt: request.input, systemPrompt: request.systemPrompt, history: request.history as ChatMessage[] | undefined, temperature: request.temperature, maxTokens: request.maxTokens }, routeRequest);
       this.executionState.transition(task, "completed");
       task.result = result.response;
       await this.events.emit("assistant.responding", result.response, { requestId, taskId: task.id });
-
-      return {
-        requestId,
-        task,
-        response: result.response,
-        providerId: result.response.providerId as ProviderId,
-        model: result.response.model,
-        status: "completed",
-      };
+      return { requestId, task, response: result.response, providerId: result.response.providerId as ProviderId, model: result.response.model, status: "completed" };
     } catch (error) {
       return this.failTask(task, error instanceof Error ? error.message : String(error));
     }
