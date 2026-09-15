@@ -3,6 +3,7 @@ import type { AuthorityLevel, RiskLevel } from "../contracts/types.js";
 export type IntentKind =
   | "conversation"
   | "search"
+  | "media_playback"
   | "application_control"
   | "file_operation"
   | "system_command"
@@ -50,6 +51,17 @@ const RULES: Array<{
     ],
   },
   {
+    kind: "media_playback",
+    authority: 1,
+    risk: "low",
+    requiresPlanning: true,
+    patterns: [
+      /\b(play|listen to)\b.+\b(?:on\s+)?(?:youtube|music|song|video|track|media)\b/i,
+      /\b(?:open|launch|start)\s+youtube\b.+\bplay\b/i,
+      /\bplay\b.+\bon\s+youtube\b/i,
+    ],
+  },
+  {
     kind: "application_control",
     authority: 2,
     risk: "low",
@@ -93,7 +105,7 @@ export function classifyIntent(input: string): Intent {
         input: normalized,
         authority: rule.authority,
         risk: rule.risk,
-        confidence: rule.kind === "conversation" ? 0.55 : 0.82,
+        confidence: 0.82,
         requiresPlanning: rule.requiresPlanning,
       };
     }
