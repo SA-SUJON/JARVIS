@@ -13,9 +13,16 @@ export interface PlanValidationResult {
   issues: PlanValidationIssue[];
 }
 
+export interface VerificationSupport {
+  supports(toolId: string): boolean;
+}
+
 /** Validates that a planned task is structurally executable before approval or execution. */
 export class PlanValidationEngine {
-  constructor(private readonly tools: Pick<ToolRegistry, "get">) {}
+  constructor(
+    private readonly tools: Pick<ToolRegistry, "get">,
+    private readonly verification?: VerificationSupport,
+  ) {}
 
   validate(task: Task): PlanValidationResult {
     const issues: PlanValidationIssue[] = [];
@@ -88,6 +95,13 @@ export class PlanValidationEngine {
             issues.push({
               stepId: step.id,
               reason: `Insufficient task authority for tool ${step.toolId}: requires level ${tool.definition.authority}, task has level ${task.authority}`,
+            });
+          }
+
+          if (this.verification && !this.verification.supports(step.toolId)) {
+            issues.push({
+              stepId: step.id,
+              reason: `No post-execution verifier is registered for tool: ${step.toolId}`,
             });
           }
         }
