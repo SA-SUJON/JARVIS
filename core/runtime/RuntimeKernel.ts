@@ -182,7 +182,10 @@ export class RuntimeKernel {
     }), request);
   }
 
-  private continueOrchestration(request: RuntimeExecutionRequest, orchestration: Awaited<ReturnType<Orchestrator["execute"]>>): RuntimeExecutionResult {
+  private async continueOrchestration(
+    request: RuntimeExecutionRequest,
+    orchestration: Awaited<ReturnType<Orchestrator["execute"]>>,
+  ): Promise<RuntimeExecutionResult> {
     const validation = this.planValidation.validate(orchestration.task);
     if (!validation.valid) {
       const reason = validation.issues.map((issue) => issue.stepId ? `${issue.stepId}: ${issue.reason}` : issue.reason).join("; ");
@@ -190,9 +193,7 @@ export class RuntimeKernel {
       orchestration.task.error = `Plan validation failed: ${reason}`;
       return { requestId: orchestration.requestId, task: orchestration.task, status: "failed", error: orchestration.task.error };
     }
-    if (orchestration.status === "awaiting_approval") {
-      return this.createApproval(request, orchestration.task, orchestration.requestId, orchestration.error);
-    }
+    if (orchestration.status === "awaiting_approval") return this.createApproval(request, orchestration.task, orchestration.requestId, orchestration.error);
     if (orchestration.status !== "completed") return { requestId: orchestration.requestId, task: orchestration.task, status: orchestration.status, error: orchestration.error };
     return this.executeTask(request, orchestration.task, orchestration.requestId);
   }
@@ -263,7 +264,6 @@ export class RuntimeKernel {
       step.error = "Planned tool has no structured arguments.";
       return this.failTask(task, step.error);
     }
-
     const unmetDependencies = (step.dependsOn || []).filter((dependencyId) => task.steps.find((candidate) => candidate.id === dependencyId)?.status !== "completed");
     if (unmetDependencies.length) {
       step.status = "failed";
@@ -329,17 +329,17 @@ export class RuntimeKernel {
         if (result) return { ...result, requestId };
         if (step.toolId) { lastToolResult = step.result; lastVerification = step.verification as VerificationResult | undefined; }
       }
-
-      const reasoningResult = await this.continueWithReasoning(request, task, requestId);
-      if (reasoningResult) return reasoningResult;
-
-      if (!this.executionState.canTransition(task.status, "completed")) throw new Error(`Cannot complete task from state: ${task.status}`);
+      if (request.reasoningEnabled) {
+        const continued = await this.continueWithReasoning(request, task, requestId);
+        if (continued) return continued;
+      }
       this.executionState.transition(task, "completed");
       task.result = lastToolResult;
       return { requestId, task, status: "completed", toolResult: lastToolResult, verification: lastVerification };
     }
 
     if (task.authority >= 3) return this.failTask(task, "Approval granted, but no state-changing execution tool is bound to this task yet.");
+
     const routeRequest: Omit<ModelRouteRequest, "prompt"> = { preferredProvider: request.preferredProvider, preferredModel: request.preferredModel, taskType: request.taskType ?? "conversation" };
     try {
       const result = await this.failover.execute({ requestId, prompt: request.input, systemPrompt: request.systemPrompt, history: request.history as ChatMessage[] | undefined, temperature: request.temperature, maxTokens: request.maxTokens }, routeRequest);
@@ -347,6 +347,8 @@ export class RuntimeKernel {
       task.result = result.response;
       await this.events.emit("assistant.responding", result.response, { requestId, taskId: task.id });
       return { requestId, task, response: result.response, providerId: result.response.providerId as ProviderId, model: result.response.model, status: "completed" };
-    } catch (error) { return this.failTask(task, error instanceof Error ? error.message : String(error)); }
+    } catch (error) {
+      return this.failTask(task, error instanceof Error ? error.message : String(error));
+    }
   }
 }
