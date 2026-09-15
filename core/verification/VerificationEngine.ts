@@ -41,20 +41,58 @@ async function verifyApplication(command: string): Promise<boolean> {
   } catch { return false; }
 }
 
+function verifyYoutubeUrl(value: unknown): boolean {
+  if (typeof value !== "string" || !value) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" && /^(?:www\.)?youtube\.com$/i.test(parsed.hostname) && parsed.pathname === "/watch" && Boolean(parsed.searchParams.get("v"));
+  } catch {
+    return false;
+  }
+}
+
 class ControlledToolVerifier implements Verifier {
   supports(toolId: string): boolean {
-    return ["filesystem.read_text", "filesystem.write_text", "filesystem.delete_file", "system.open_app"].includes(toolId);
+    return ["browser.search", "media.youtube_play", "filesystem.read_text", "filesystem.write_text", "filesystem.delete_file", "system.open_app"].includes(toolId);
   }
 
   async verify(request: VerificationRequest): Promise<VerificationResult> {
     if (!request.result.ok) return { status: "failed", verified: false, reason: "Tool execution did not succeed, so post-execution verification cannot pass." };
     switch (request.toolId) {
+      case "browser.search": return this.verifySearch(request);
+      case "media.youtube_play": return this.verifyYoutubePlay(request);
       case "filesystem.read_text": return this.verifyRead(request);
       case "filesystem.write_text": return this.verifyWrite(request);
       case "filesystem.delete_file": return this.verifyDelete(request);
       case "system.open_app": return this.verifyOpenApp(request);
       default: return { status: "unsupported", verified: false, reason: `No verifier is registered for tool: ${request.toolId}` };
     }
+  }
+
+  private verifySearch(request: VerificationRequest): VerificationResult {
+    const results = request.result.data;
+    if (!Array.isArray(results)) return { status: "failed", verified: false, reason: "Search tool returned a non-array result." };
+    const valid = results.every((entry) => {
+      if (!entry || typeof entry !== "object") return false;
+      const value = entry as Record<string, unknown>;
+      return typeof value.title === "string" && value.title.length > 0 && typeof value.url === "string" && /^https?:\/\//i.test(value.url);
+    });
+    return valid
+      ? { status: "verified", verified: true, reason: `Search returned ${results.length} structurally valid web result${results.length === 1 ? "" : "s"}.`, details: { count: results.length } }
+      : { status: "failed", verified: false, reason: "Search returned an invalid result entry." };
+  }
+
+  private verifyYoutubePlay(request: VerificationRequest): VerificationResult {
+    const value = (request.result.data ?? {}) as Record<string, unknown>;
+    const query = String(value.query ?? "").trim();
+    const title = String(value.title ?? "").trim();
+    const url = value.url;
+    const launched = value.launched === true;
+    const operation = value.operation;
+    const verified = Boolean(query) && Boolean(title) && launched && operation === "youtube_play" && verifyYoutubeUrl(url);
+    return verified
+      ? { status: "verified", verified: true, reason: "YouTube playback request produced a valid YouTube watch URL and launch confirmation.", details: { query, title, url, launched: true, playbackConfirmed: false } }
+      : { status: "failed", verified: false, reason: "YouTube playback result is missing a valid watch URL or launch confirmation.", details: { query, title, url, launched, operation } };
   }
 
   private async verifyRead(request: VerificationRequest): Promise<VerificationResult> {
