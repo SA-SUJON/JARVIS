@@ -61,6 +61,52 @@ test.describe("MARK_05 reasoning cycle", () => {
     expect(currentTask.steps).toHaveLength(0);
   });
 
+  test("enforces the max cycle budget across repeated runs for one task", async () => {
+    const currentTask = task();
+    const engine = new ReasoningCycleEngine();
+    let calls = 0;
+    const runner = async () => {
+      calls += 1;
+      return {
+        proposal: { action: "stop" as const, rationale: `cycle-${calls}` },
+      };
+    };
+
+    const first = await engine.run(currentTask, runner, { maxCycles: 2 });
+    const second = await engine.run(currentTask, runner, { maxCycles: 2 });
+    const third = await engine.run(currentTask, runner, { maxCycles: 2 });
+
+    expect(first.cycles).toBe(1);
+    expect(second.cycles).toBe(2);
+    expect(third.status).toBe("stopped");
+    expect(third.proposal.rationale).toBe("Reasoning cycle budget exhausted for this task.");
+    expect(calls).toBe(2);
+  });
+
+  test("reports the final cycle as bounded while still returning its proposed step", async () => {
+    const currentTask = task();
+    const engine = new ReasoningCycleEngine();
+    const result = await engine.run(currentTask, async () => ({
+      proposal: {
+        action: "execute" as const,
+        rationale: "Take the final bounded action.",
+        toolId: "filesystem.read_text",
+        arguments: { path: "tests/fixture.txt" },
+      },
+      step: {
+        id: "step-final",
+        description: "Read the fixture.",
+        toolId: "filesystem.read_text",
+        arguments: { path: "tests/fixture.txt" },
+        status: "pending" as const,
+      },
+    }), { maxCycles: 1 });
+
+    expect(result.status).toBe("bounded");
+    expect(result.cycles).toBe(1);
+    expect(result.step?.status).toBe("pending");
+  });
+
   test("rejects invalid cycle bounds", async () => {
     const engine = new ReasoningCycleEngine();
     await expect(engine.run(task(), async () => ({
