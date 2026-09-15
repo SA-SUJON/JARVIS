@@ -2,6 +2,7 @@ import type { Task, TaskResultReference, ToolArguments } from "../contracts/type
 import { isTaskResultReference } from "./TaskContext.js";
 import { validateToolArguments } from "../../tools/ToolExecutor.js";
 import type { ToolRegistry } from "../../tools/ToolRegistry.js";
+import { VerificationEngine } from "../verification/VerificationEngine.js";
 
 export interface PlanValidationIssue {
   stepId?: string;
@@ -19,10 +20,14 @@ export interface VerificationSupport {
 
 /** Validates that a planned task is structurally executable before approval or execution. */
 export class PlanValidationEngine {
+  private readonly verification: VerificationSupport;
+
   constructor(
     private readonly tools: Pick<ToolRegistry, "get">,
-    private readonly verification?: VerificationSupport,
-  ) {}
+    verification?: VerificationSupport,
+  ) {
+    this.verification = verification ?? new VerificationEngine();
+  }
 
   validate(task: Task): PlanValidationResult {
     const issues: PlanValidationIssue[] = [];
@@ -98,7 +103,7 @@ export class PlanValidationEngine {
             });
           }
 
-          if (this.verification && !this.verification.supports(step.toolId)) {
+          if (!this.verification.supports(step.toolId)) {
             issues.push({
               stepId: step.id,
               reason: `No post-execution verifier is registered for tool: ${step.toolId}`,
