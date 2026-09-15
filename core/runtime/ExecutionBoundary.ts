@@ -2,7 +2,7 @@ import type { Task, TaskStep, ToolContext } from "../contracts/types.js";
 import type { VerificationResult } from "../verification/index.js";
 import type { ToolExecutionResult } from "../../tools/types.js";
 import { ToolExecutor } from "../../tools/ToolExecutor.js";
-import { VerificationEngine } from "../verification/index.js";
+import { VerificationEngine } from "../verification/VerificationEngine.js";
 import { TaskContextStore, resolveToolArguments } from "./TaskContext.js";
 
 export interface ExecutionBoundaryResult {
@@ -22,7 +22,8 @@ export class ExecutionBoundary {
   ) {}
 
   isVerifiedCompletion(step: TaskStep): boolean {
-    return step.status === "completed" && step.verification?.verified === true && step.verification.status === "verified";
+    const verification = step.verification as VerificationResult | undefined;
+    return step.status === "completed" && verification?.verified === true && verification.status === "verified";
   }
 
   assertVerifiableCompletion(step: TaskStep): void {
