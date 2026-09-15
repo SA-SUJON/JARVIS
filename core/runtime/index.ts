@@ -6,3 +6,4 @@ export * from "./PlanValidationEngine.js";
 export * from "./TaskReasoningEngine.js";
 export * from "./RuntimeReasoning.js";
 export * from "./ReasoningCycleEngine.js";
+export * from "./ExecutionBoundary.js";
